@@ -1,6 +1,4 @@
-function isEventProp(name) {
-  return /^on/i.test(name);
-}
+import { isEventAttribute } from "./dom-utils.js";
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -93,7 +91,7 @@ export function diffProps(oldProps = {}, newProps = {}) {
   const remove = [];
 
   for (const [name, nextValue] of Object.entries(newProps)) {
-    if (!name || isEventProp(name)) {
+    if (!name || isEventAttribute(name)) {
       continue;
     }
 
@@ -111,7 +109,7 @@ export function diffProps(oldProps = {}, newProps = {}) {
   }
 
   for (const [name, previousValue] of Object.entries(oldProps)) {
-    if (!name || isEventProp(name)) {
+    if (!name || isEventAttribute(name)) {
       continue;
     }
 
