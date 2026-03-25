@@ -1,8 +1,4 @@
-import { assertDomNode } from "./dom-utils.js";
-
-function isEventAttribute(name) {
-  return /^on/i.test(name);
-}
+import { assertDomNode, isEventAttribute } from "./dom-utils.js";
 
 function getDocument() {
   if (typeof document === "undefined") {
@@ -45,14 +41,12 @@ export function createDomFromVNode(vNode) {
 export function renderVNode(vNode, container) {
   assertDomNode(container, "container");
 
-  while (container.firstChild) {
-    container.removeChild(container.firstChild);
-  }
-
   const renderedNode = createDomFromVNode(vNode);
 
   if (renderedNode) {
-    container.appendChild(renderedNode);
+    container.replaceChildren(renderedNode);
+  } else {
+    container.replaceChildren();
   }
 
   return renderedNode;

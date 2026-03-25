@@ -310,7 +310,7 @@ export function cloneVNode(vNode) {}
 - `title`
 - `data-*`
 - 일반 문자열 attribute
-- boolean attribute는 존재 시 `""` 문자열로 저장
+- boolean attribute는 존재 시 `true`로 저장
 
 예:
 ```html
@@ -318,7 +318,7 @@ export function cloneVNode(vNode) {}
 ```
 →
 ```js
-props: { disabled: "" }
+props: { disabled: true }
 ```
 
 ---

@@ -5,3 +5,7 @@ export function assertDomNode(value, label = "domNode") {
 
   return value;
 }
+
+export function isEventAttribute(name) {
+  return /^on/i.test(name);
+}

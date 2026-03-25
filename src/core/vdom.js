@@ -1,4 +1,4 @@
-import { assertDomNode } from "./dom-utils.js";
+import { assertDomNode, isEventAttribute } from "./dom-utils.js";
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
@@ -36,17 +36,13 @@ function isIgnoredText(text) {
   return typeof text === "string" && text.trim() === "";
 }
 
-function isEventAttribute(name) {
-  return /^on/i.test(name);
-}
-
 function getAttributeValue(attribute) {
   if (!attribute || !attribute.name) {
     return "";
   }
 
   if (BOOLEAN_ATTRIBUTES.has(attribute.name.toLowerCase())) {
-    return "";
+    return true;
   }
 
   return String(attribute.value ?? "");
