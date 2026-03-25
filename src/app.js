@@ -1,8 +1,11 @@
-import { SAMPLE_HTML } from "../assets/sample-html.js";
 import { diff } from "./core/diff.js";
 import { applyPatches } from "./core/patch.js";
 import { renderVNode } from "./core/render.js";
-import { cloneVNode, domChildrenToVNodes } from "./core/vdom.js";
+import {
+  cloneVNode,
+  domChildrenToVNodes,
+  mergeRetainedEventProps
+} from "./core/vdom.js";
 import {
   createHistory,
   getCurrentHistoryVNode,
@@ -17,6 +20,100 @@ import { formatHistoryTree, formatVNodeTree } from "./ui/tree-formatter.js";
 const TEXT_NODE = 3;
 const COMMENT_NODE = 8;
 
+function handleSampleButtonClick() {
+  console.log("[Mini Virtual DOM Playground] Sample button clicked.");
+}
+
+function createInitialSampleVNode() {
+  return {
+    nodeType: "element",
+    tag: "div",
+    props: {
+      class: "card"
+    },
+    children: [
+      {
+        nodeType: "element",
+        tag: "h1",
+        props: {},
+        children: [
+          {
+            nodeType: "text",
+            text: "Mini Virtual DOM"
+          }
+        ]
+      },
+      {
+        nodeType: "element",
+        tag: "p",
+        props: {
+          "data-role": "description"
+        },
+        children: [
+          {
+            nodeType: "text",
+            text: "Edit the test area and patch the real area."
+          }
+        ]
+      },
+      {
+        nodeType: "element",
+        tag: "ul",
+        props: {},
+        children: [
+          {
+            nodeType: "element",
+            tag: "li",
+            props: {},
+            children: [
+              {
+                nodeType: "text",
+                text: "Diff text"
+              }
+            ]
+          },
+          {
+            nodeType: "element",
+            tag: "li",
+            props: {},
+            children: [
+              {
+                nodeType: "text",
+                text: "Diff props"
+              }
+            ]
+          },
+          {
+            nodeType: "element",
+            tag: "li",
+            props: {},
+            children: [
+              {
+                nodeType: "text",
+                text: "Add and remove nodes"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        nodeType: "element",
+        tag: "button",
+        props: {
+          title: "sample button",
+          onClick: handleSampleButtonClick
+        },
+        children: [
+          {
+            nodeType: "text",
+            text: "Patch me"
+          }
+        ]
+      }
+    ]
+  };
+}
+
 function getAppElements() {
   const realRoot = document.querySelector("#real-root");
   const testRoot = document.querySelector("#test-root");
@@ -29,13 +126,6 @@ function getAppElements() {
     realRoot,
     testRoot,
   };
-}
-
-function loadSampleHtml(container) {
-  const template = document.createElement("template");
-
-  template.innerHTML = SAMPLE_HTML.trim();
-  container.replaceChildren(template.content.cloneNode(true));
 }
 
 function readSingleRootVNode(container) {
@@ -77,7 +167,7 @@ function isSameVNode(leftVNode, rightVNode) {
 }
 
 function patchContainer(container, fromVNode, toVNode, patches) {
-  const currentDomVNode = readSingleRootVNode(container);
+  const currentDomVNode = mergeRetainedEventProps(fromVNode, readSingleRootVNode(container));
 
   if (patches.length === 0) {
     if (!isSameVNode(currentDomVNode, toVNode)) {
@@ -96,7 +186,9 @@ function patchContainer(container, fromVNode, toVNode, patches) {
 
   applyPatches(patchTarget, patches);
 
-  if (!isSameVNode(readSingleRootVNode(container), toVNode)) {
+  const patchedDomVNode = mergeRetainedEventProps(toVNode, readSingleRootVNode(container));
+
+  if (!isSameVNode(patchedDomVNode, toVNode)) {
     renderVNode(toVNode, container);
   }
 }
@@ -182,9 +274,7 @@ export function initApp() {
   const { realRoot, testRoot } = elements;
 
   try {
-    loadSampleHtml(realRoot);
-
-    const initialVNode = readSingleRootVNode(realRoot);
+    const initialVNode = createInitialSampleVNode();
 
     if (!initialVNode) {
       setBootstrapError("앱 초기화 실패: 샘플에서 단일 루트 VDOM을 만들 수 없습니다.");
@@ -195,12 +285,11 @@ export function initApp() {
     let currentVNode = cloneVNode(initialSnapshot);
     let historyState = createHistory(initialSnapshot);
 
-    renderVNode(currentVNode, testRoot);
-    refreshUi({ patches: [], vNode: currentVNode, historyState });
+    syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
 
     bindControls({
       onPatch: () => {
-        const newVNode = readSingleRootVNode(testRoot);
+        const newVNode = mergeRetainedEventProps(currentVNode, readSingleRootVNode(testRoot));
 
         if (!newVNode) {
           syncRenderRoots(realRoot, testRoot, currentVNode, historyState);

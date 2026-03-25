@@ -1,4 +1,4 @@
-import { createDomFromVNode, setDomProps } from "./render.js";
+import { createDomFromVNode, removeDomProp, setDomProps } from "./render.js";
 import { isRootPath } from "./path-utils.js";
 
 const TEXT_NODE = 3;
@@ -207,7 +207,7 @@ export function applyPatch(rootElement, patch) {
           continue;
         }
 
-        targetNode.removeAttribute(name);
+        removeDomProp(targetNode, name);
       }
 
       setDomProps(targetNode, patch.props?.set ?? {});

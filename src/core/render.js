@@ -1,4 +1,8 @@
-import { assertDomNode, isEventAttribute } from "./dom-utils.js";
+import {
+  assertDomNode,
+  isFunctionEventProp,
+  normalizeEventPropName
+} from "./dom-utils.js";
 
 function getDocument() {
   if (typeof document === "undefined") {
@@ -52,16 +56,44 @@ export function renderVNode(vNode, container) {
   return renderedNode;
 }
 
+export function removeDomProp(element, name) {
+  assertDomNode(element, "element");
+
+  if (!name) {
+    return element;
+  }
+
+  const normalizedEventName = normalizeEventPropName(name);
+
+  if (normalizedEventName) {
+    element[normalizedEventName] = null;
+    return element;
+  }
+
+  element.removeAttribute(name);
+
+  return element;
+}
+
 export function setDomProps(element, props = {}) {
   assertDomNode(element, "element");
 
   for (const [name, value] of Object.entries(props)) {
-    if (!name || isEventAttribute(name)) {
+    if (!name) {
+      continue;
+    }
+
+    if (isFunctionEventProp(name, value)) {
+      element[normalizeEventPropName(name)] = value;
+      continue;
+    }
+
+    if (normalizeEventPropName(name)) {
       continue;
     }
 
     if (value === null || value === undefined || value === false) {
-      element.removeAttribute(name);
+      removeDomProp(element, name);
       continue;
     }
 

@@ -8,6 +8,7 @@
 - 브라우저에서 바로 실행하는 ESM 구조를 유지합니다.
 - UI 계층은 실제 렌더 트리의 루트 노드 1개를 기준으로 patch를 적용합니다.
 - 테스트 영역은 `contenteditable`로 편집하고, Patch / Undo / Redo는 patch 기반으로 반영합니다. Reset과 비정상 DOM 복구 시에는 전체 렌더를 사용합니다.
+- JS에서 만든 VNode는 함수 기반 이벤트 props(`onClick`, `onInput` 등)를 포함할 수 있습니다. DOM을 다시 읽어 만들 때는 이벤트를 직렬화하지 않고, 동일한 경로와 태그의 노드에 한해 기존 핸들러를 보존합니다.
 
 ## 2. 핵심 기능
 
@@ -45,7 +46,8 @@ ElementVNode
   nodeType: "element",
   tag: "div",
   props: {
-    class: "card"
+    class: "card",
+    onClick: handleClick
   },
   children: []
 }
@@ -64,6 +66,7 @@ TextVNode
 
 - `diff(oldVNode, newVNode)`는 `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS` patch만 생성합니다.
 - children 비교는 항상 index 기반입니다.
+- 함수 기반 `on*` props는 diff 대상에 포함됩니다. 같은 함수 참조면 변경 없음으로 판단합니다.
 - key 기반 재정렬 최적화는 지원하지 않습니다.
 - `path=[]`는 렌더 트리의 실제 루트 DOM 노드 자신을 의미합니다.
 
@@ -71,7 +74,8 @@ TextVNode
 
 - `#real-root`, `#test-root`는 patch 대상 자체가 아니라 렌더 컨테이너입니다.
 - `currentVNode`는 컨테이너 내부의 실제 루트 노드 1개를 표현합니다.
-- Patch 버튼은 `#test-root`의 child 구조를 읽어 새 VDOM을 만들고, 실제 적용은 `applyPatches(realRoot.firstChild, patches)`처럼 실제 루트 노드에 수행합니다.
+- Patch 버튼은 `#test-root`의 child 구조를 읽어 새 VDOM을 만들고, DOM에서 사라진 함수 이벤트 props는 기존 `currentVNode`에서 구조적으로 병합한 뒤 diff를 계산합니다.
+- 실제 적용은 `applyPatches(realRoot.firstChild, patches)`처럼 실제 루트 노드에 수행합니다.
 - Undo와 Redo는 현재 history snapshot과 목표 snapshot 사이의 `diff`를 계산하고, 두 컨테이너 모두에 patch를 적용합니다.
 - `#test-root`처럼 현재 DOM이 `currentVNode`와 어긋난 컨테이너는 patch 대신 `renderVNode`로 해당 컨테이너만 복구합니다.
 - Reset은 두 컨테이너를 `renderVNode`로 전체 렌더합니다.
@@ -95,18 +99,22 @@ TextVNode
 수동 스모크 테스트 항목:
 
 1. 초기 샘플 렌더링 확인
-2. 테스트 영역 텍스트 수정 후 Patch 반영 확인
-3. 속성 변경과 자식 추가/삭제 후 Patch 반영 확인
-4. 3회 patch 후 undo 2회, redo 1회 흐름 확인
-5. undo 후 새 patch 시 redo 이력 폐기 확인
-6. Reset 후 초기 상태 복구 확인
-7. debug panel과 버튼 disabled 상태 갱신 확인
+2. 초기 샘플 버튼 클릭 시 콘솔 로그 핸들러 실행 확인
+3. 테스트 영역 텍스트 수정 후 Patch 반영과 버튼 핸들러 유지 확인
+4. 속성 변경과 자식 추가/삭제 후 Patch 반영 확인
+5. 버튼 노드 제거/교체 후 이전 핸들러 제거 확인
+6. 3회 patch 후 undo 2회, redo 1회 흐름과 버튼 핸들러 복원 확인
+7. undo 후 새 patch 시 redo 이력 폐기 확인
+8. Reset 후 초기 상태 복구 확인
+9. debug panel과 버튼 disabled 상태 갱신 확인
 
 ## 9. 한계점
 
 - children diff는 index 기반이라 reorder 최적화를 지원하지 않습니다.
-- 이벤트 핸들러 diff를 지원하지 않습니다.
+- 함수 기반 이벤트는 `on*` DOM property 모델만 지원하고 `addEventListener` 다중 리스너 모델은 지원하지 않습니다.
+- `onclick="foo()"` 같은 문자열 이벤트 속성은 지원하지 않습니다.
 - 복잡한 form 상태 동기화는 다루지 않습니다.
+- `contenteditable`에서 새 함수를 직접 입력해 이벤트를 만드는 기능은 없습니다. 기존 핸들러는 같은 경로와 태그의 노드에만 보존됩니다.
 - `contenteditable` 편집 결과는 브라우저별로 차이가 날 수 있습니다.
 - 테스트 영역이 단일 루트 구조를 잃으면 patch 전에 재동기화가 필요할 수 있습니다.
 

@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { diff, diffChildren, diffProps } from "../../../src/core/diff.js";
 
+function handleClick() {}
+
+function handleNextClick() {}
+
 function text(value) {
   return {
     nodeType: "text",
@@ -135,46 +139,68 @@ test("diffChildren compares by max length and propagates nested paths", () => {
   ]);
 });
 
-test("diffProps returns set and remove collections while ignoring event props", () => {
+test("diffProps returns set collections for changed attrs and function event handlers", () => {
   assert.deepEqual(
     diffProps(
       {
         class: "before",
         hidden: "",
-        onclick: "ignored"
+        onClick: handleClick
       },
       {
         class: "after",
         title: "tooltip",
         hidden: false,
+        onClick: handleNextClick,
         oninput: "ignored-too"
       }
     ),
     {
       set: {
         class: "after",
-        title: "tooltip"
+        title: "tooltip",
+        onClick: handleNextClick
       },
       remove: ["hidden"]
     }
   );
 });
 
-test("diffProps returns empty changes when props are effectively identical", () => {
+test("diffProps returns empty changes when the same handler is kept with different casing", () => {
   assert.deepEqual(
     diffProps(
       {
         id: "node",
-        onclick: "skip"
+        onClick: handleClick
       },
       {
         id: "node",
+        onclick: handleClick,
         oninput: "skip"
       }
     ),
     {
       set: {},
       remove: []
+    }
+  );
+});
+
+test("diffProps removes a function event handler when it becomes invalid", () => {
+  assert.deepEqual(
+    diffProps(
+      {
+        id: "node",
+        onClick: handleClick
+      },
+      {
+        id: "node",
+        onClick: "ignored"
+      }
+    ),
+    {
+      set: {},
+      remove: ["onClick"]
     }
   );
 });

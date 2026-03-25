@@ -123,7 +123,7 @@
 4. Codex에 요청할 때도 반드시 이 명세서를 함께 제공한다.
 5. `innerHTML`로 전체 영역을 매번 갈아엎지 않는다. Patch 적용이 우선이다.
 6. children 비교는 **index 기반**으로만 구현한다.
-7. 이벤트 핸들러 diff는 이번 범위에서 제외한다.
+7. 함수 기반 이벤트 핸들러 props(`onClick` 등)는 지원하되, 문자열 이벤트 속성은 지원하지 않는다.
 8. 브라우저에서 바로 실행 가능해야 하며 빌드 도구 의존성 없이 동작 가능해야 한다.
 9. 순수 로직 계층은 Node 내장 `node:test`와 `assert/strict`로 자동 테스트한다.
 10. DOM/UI 의존 계층은 별도 DOM 테스트 환경 도입 전까지 수동 스모크 테스트로 검증한다.
@@ -293,6 +293,7 @@ project-root/
 export function domToVNode(domNode) {}
 export function domChildrenToVNodes(domNode) {}
 export function cloneVNode(vNode) {}
+export function mergeRetainedEventProps(sourceVNode, targetVNode) {}
 ```
 
 ### 동작 규칙
@@ -311,6 +312,8 @@ export function cloneVNode(vNode) {}
 - `data-*`
 - 일반 문자열 attribute
 - boolean attribute는 존재 시 `true`로 저장
+- DOM을 다시 읽을 때 이벤트 속성(`on*`)은 계속 무시
+- JS에서 직접 만든 VNode는 함수 기반 이벤트 props(`onClick`, `onclick`, `onInput` 등) 허용
 
 예:
 ```html
@@ -330,6 +333,7 @@ props: { disabled: true }
 ```js
 export function createDomFromVNode(vNode) {}
 export function renderVNode(vNode, container) {}
+export function removeDomProp(element, name) {}
 export function setDomProps(element, props = {}) {}
 ```
 
@@ -344,7 +348,9 @@ export function setDomProps(element, props = {}) {}
 - 문자열 attribute는 `setAttribute`
 - 값 제거는 `removeAttribute`
 - style은 문자열 그대로 유지
-- 이벤트 핸들러 속성(onclick 등)은 이번 범위에서 무시
+- 함수 기반 이벤트 props(`onClick`, `onclick` 등)는 대응되는 DOM property(`onclick`)에 할당
+- 이벤트 제거는 해당 DOM event property를 `null`로 되돌려 처리
+- 문자열 이벤트 속성(`onclick="foo()"`)과 함수가 아닌 `on*` 값은 무시
 
 ---
 
@@ -521,26 +527,25 @@ export function initApp() {}
 ```
 
 ### 초기화 순서
-1. 샘플 HTML 로드
-2. 실제 영역 DOM 생성
-3. 실제 영역 DOM → oldVNode 변환
-4. oldVNode로 테스트 영역 렌더링
-5. history 초기화
-6. 버튼 이벤트 연결
-7. 디버그 패널 초기 상태 반영
+1. JS VNode 기반 초기 샘플 생성
+2. `initialSnapshot`, `currentVNode`, history 초기화
+3. 초기 VNode로 실제 영역과 테스트 영역 렌더링 후 디버그 패널 초기 상태 반영
+4. 버튼 이벤트 연결
 
 ### Patch 버튼 동작
 1. `#test-root` 현재 DOM 읽기
 2. `newVNode = domToVNode(testRoot)`가 아니라, testRoot의 child 구조를 기준으로 실제 루트 노드 1개와 일치하도록 처리
-3. `patches = diff(currentVNode, newVNode)`
-4. `realRoot`는 `#real-root` 컨테이너이며, patch 적용 시에는 `applyPatches(realRoot.firstChild, patches)`처럼 실제 렌더 루트를 넘긴다.
-5. `currentVNode = cloneVNode(newVNode)`
-6. history push
-7. test 영역을 currentVNode 기준으로 재동기화
-8. debug panel 업데이트
+3. DOM에서 읽어온 `newVNode`에는 함수 이벤트가 없으므로, 같은 path와 tag의 노드에 한해 `currentVNode`의 함수 이벤트 props를 구조적으로 병합
+4. `patches = diff(currentVNode, newVNode)`
+5. `realRoot`는 `#real-root` 컨테이너이며, patch 적용 시에는 `applyPatches(realRoot.firstChild, patches)`처럼 실제 렌더 루트를 넘긴다.
+6. `currentVNode = cloneVNode(newVNode)`
+7. history push
+8. test 영역을 currentVNode 기준으로 재동기화
+9. debug panel 업데이트
 
 추가 규칙:
 - `currentVNode`와 `newVNode`는 컨테이너 자신이 아니라 컨테이너 내부의 실제 루트 노드 1개를 표현한다.
+- 함수 이벤트 보존은 동일한 index path와 tag를 가진 노드에만 적용한다.
 
 ### Undo 버튼 동작
 1. history undo
@@ -639,7 +644,6 @@ export function setButtonState({ canUndo, canRedo }) {}
 - TypeScript 도입
 - 서버 구현
 - key 기반 diff
-- 이벤트 핸들러 diff
 - HTML parser 라이브러리 도입
 - 전체 패치 대신 매번 `realRoot.innerHTML = ...` 방식으로 전체 갈아엎기
 - 팀원마다 다른 파일 구조 사용
@@ -903,7 +907,8 @@ README는 아래 목차를 최소 포함해야 한다.
 README와 발표에서 아래 한계점을 솔직하게 설명한다.
 
 - children diff가 index 기반이라 reorder 최적화는 지원하지 않음
-- 이벤트 핸들러 diff 미지원
+- 함수 이벤트는 DOM 재직렬화가 불가능하므로, `contenteditable`에서 새 함수를 직접 작성하는 흐름은 지원하지 않음
+- 문자열 이벤트 속성(`onclick="foo()"`) 미지원
 - 복잡한 form 상태 동기화 미지원
 - contenteditable 편집 결과가 브라우저별로 다를 수 있음
 

@@ -1,4 +1,4 @@
-import { assertDomNode, isEventAttribute } from "./dom-utils.js";
+import { assertDomNode, isEventAttribute, isFunctionEventProp } from "./dom-utils.js";
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
@@ -125,5 +125,67 @@ export function cloneVNode(vNode) {
     tag: String(vNode.tag ?? ""),
     props: { ...(vNode.props ?? {}) },
     children: Array.isArray(vNode.children) ? vNode.children.map(cloneVNode) : []
+  };
+}
+
+function mergeEventProps(sourceProps = {}, targetProps = {}) {
+  const nextProps = { ...(targetProps ?? {}) };
+  const targetEventNames = new Set(
+    Object.entries(targetProps ?? {})
+      .filter(([name, value]) => isFunctionEventProp(name, value))
+      .map(([name]) => name.toLowerCase())
+  );
+
+  for (const [name, value] of Object.entries(sourceProps ?? {})) {
+    if (!isFunctionEventProp(name, value)) {
+      continue;
+    }
+
+    if (targetEventNames.has(name.toLowerCase())) {
+      continue;
+    }
+
+    nextProps[name] = value;
+  }
+
+  return nextProps;
+}
+
+export function mergeRetainedEventProps(sourceVNode, targetVNode) {
+  if (!targetVNode) {
+    return targetVNode;
+  }
+
+  if (targetVNode.nodeType === "text") {
+    return {
+      nodeType: "text",
+      text: String(targetVNode.text ?? "")
+    };
+  }
+
+  const baseNode = {
+    nodeType: "element",
+    tag: String(targetVNode.tag ?? ""),
+    props: { ...(targetVNode.props ?? {}) },
+    children: Array.isArray(targetVNode.children) ? targetVNode.children.map(cloneVNode) : []
+  };
+
+  if (
+    !sourceVNode ||
+    sourceVNode.nodeType !== "element" ||
+    sourceVNode.tag !== targetVNode.tag
+  ) {
+    return baseNode;
+  }
+
+  return {
+    nodeType: "element",
+    tag: String(targetVNode.tag ?? ""),
+    props: mergeEventProps(sourceVNode.props, targetVNode.props),
+    children: Array.isArray(targetVNode.children)
+      ? targetVNode.children.map((childVNode, index) =>
+          mergeRetainedEventProps(sourceVNode.children?.[index], childVNode)
+        )
+      : []
   };
 }

@@ -1,6 +1,4 @@
-function isEventProp(name) {
-  return /^on/i.test(name);
-}
+import { isEventAttribute, isFunctionEventProp, normalizeEventPropName } from "./dom-utils.js";
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -12,6 +10,23 @@ function isRemovablePropValue(value) {
 
 function hasPropChanges(propPatch) {
   return Object.keys(propPatch.set).length > 0 || propPatch.remove.length > 0;
+}
+
+function getFunctionEventEntries(props = {}) {
+  const entries = new Map();
+
+  for (const [name, value] of Object.entries(props)) {
+    if (!isFunctionEventProp(name, value)) {
+      continue;
+    }
+
+    entries.set(normalizeEventPropName(name), {
+      name,
+      value
+    });
+  }
+
+  return entries;
 }
 
 export function diff(oldVNode, newVNode, path = []) {
@@ -93,7 +108,7 @@ export function diffProps(oldProps = {}, newProps = {}) {
   const remove = [];
 
   for (const [name, nextValue] of Object.entries(newProps)) {
-    if (!name || isEventProp(name)) {
+    if (!name || isEventAttribute(name)) {
       continue;
     }
 
@@ -110,13 +125,37 @@ export function diffProps(oldProps = {}, newProps = {}) {
     }
   }
 
-  for (const [name, previousValue] of Object.entries(oldProps)) {
-    if (!name || isEventProp(name)) {
+  for (const [name] of Object.entries(oldProps)) {
+    if (!name || isEventAttribute(name)) {
       continue;
     }
 
     if (!hasOwn(newProps, name) && !remove.includes(name)) {
       remove.push(name);
+    }
+  }
+
+  const oldEventEntries = getFunctionEventEntries(oldProps);
+  const newEventEntries = getFunctionEventEntries(newProps);
+  const normalizedEventNames = new Set([
+    ...oldEventEntries.keys(),
+    ...newEventEntries.keys()
+  ]);
+
+  for (const normalizedEventName of normalizedEventNames) {
+    const previousEntry = oldEventEntries.get(normalizedEventName);
+    const nextEntry = newEventEntries.get(normalizedEventName);
+
+    if (!nextEntry) {
+      if (previousEntry && !remove.includes(previousEntry.name)) {
+        remove.push(previousEntry.name);
+      }
+
+      continue;
+    }
+
+    if (!previousEntry || previousEntry.value !== nextEntry.value) {
+      set[nextEntry.name] = nextEntry.value;
     }
   }
 
