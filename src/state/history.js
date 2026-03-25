@@ -4,10 +4,6 @@ function cloneSnapshot(vNode) {
   return cloneVNode(vNode);
 }
 
-function cloneHistoryStack(stack = []) {
-  return stack.map((snapshot) => cloneSnapshot(snapshot));
-}
-
 export function createHistory(initialVNode) {
   return {
     stack: [cloneSnapshot(initialVNode)],
@@ -16,9 +12,7 @@ export function createHistory(initialVNode) {
 }
 
 export function pushHistory(historyState, vNode) {
-  const nextStack = historyState.stack
-    .slice(0, historyState.index + 1)
-    .map((snapshot) => cloneSnapshot(snapshot));
+  const nextStack = historyState.stack.slice(0, historyState.index + 1);
 
   nextStack.push(cloneSnapshot(vNode));
 
@@ -32,7 +26,7 @@ export function undoHistory(historyState) {
   const nextIndex = historyState.index > 0 ? historyState.index - 1 : historyState.index;
 
   return {
-    stack: cloneHistoryStack(historyState.stack),
+    stack: historyState.stack,
     index: nextIndex,
   };
 }
@@ -42,7 +36,7 @@ export function redoHistory(historyState) {
   const nextIndex = historyState.index < lastIndex ? historyState.index + 1 : historyState.index;
 
   return {
-    stack: cloneHistoryStack(historyState.stack),
+    stack: historyState.stack,
     index: nextIndex,
   };
 }

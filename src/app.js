@@ -52,6 +52,12 @@ function refreshUi({ patches = [], vNode, historyState }) {
   setButtonState(getButtonFlags(historyState));
 }
 
+function syncRenderRoots(realRoot, testRoot, currentVNode, historyState, patches = []) {
+  renderVNode(currentVNode, realRoot);
+  renderVNode(currentVNode, testRoot);
+  refreshUi({ patches, vNode: currentVNode, historyState });
+}
+
 export function initApp() {
   const elements = getAppElements();
 
@@ -81,9 +87,7 @@ export function initApp() {
       const newVNode = readSingleRootVNode(testRoot);
 
       if (!newVNode || !realRoot.firstChild) {
-        renderVNode(currentVNode, realRoot);
-        renderVNode(currentVNode, testRoot);
-        refreshUi({ patches: [], vNode: currentVNode, historyState });
+        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
         return;
       }
 
@@ -107,25 +111,19 @@ export function initApp() {
       historyState = undoHistory(historyState);
       currentVNode = getCurrentHistoryVNode(historyState);
 
-      renderVNode(currentVNode, realRoot);
-      renderVNode(currentVNode, testRoot);
-      refreshUi({ patches: [], vNode: currentVNode, historyState });
+      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
     },
     onRedo: () => {
       historyState = redoHistory(historyState);
       currentVNode = getCurrentHistoryVNode(historyState);
 
-      renderVNode(currentVNode, realRoot);
-      renderVNode(currentVNode, testRoot);
-      refreshUi({ patches: [], vNode: currentVNode, historyState });
+      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
     },
     onReset: () => {
       currentVNode = cloneVNode(initialSnapshot);
       historyState = createHistory(initialSnapshot);
 
-      renderVNode(currentVNode, realRoot);
-      renderVNode(currentVNode, testRoot);
-      refreshUi({ patches: [], vNode: currentVNode, historyState });
+      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
     },
   });
 }
