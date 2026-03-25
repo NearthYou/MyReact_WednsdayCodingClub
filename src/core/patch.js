@@ -9,12 +9,12 @@ function isIgnorableNode(node) {
     return true;
   }
 
-  if (node.nodeType === COMMENT_NODE) {
+  if (node.nodeType === Node.COMMENT_NODE) {
     return true;
   }
 
-  if (node.nodeType === TEXT_NODE) {
-    return String(node.nodeValue ?? "").trim() === "";
+  if (node.nodeType === Node.TEXT_NODE) {
+    return (node.nodeValue ?? "").trim() === "";
   }
 
   return false;
