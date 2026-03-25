@@ -1,94 +1,57 @@
 # Mini Virtual DOM Playground
 
-Vanilla JavaScript로 DOM -> Virtual DOM 변환, diff, patch, history를 구현하는 팀 프로젝트입니다.
+브라우저 DOM을 Virtual DOM으로 변환하고, diff 결과를 patch로 적용해 실제 DOM을 부분 갱신하는 Vanilla JavaScript 실습 프로젝트입니다. 실제 영역과 편집 가능한 테스트 영역을 분리해 Patch, Undo, Redo, Reset 흐름을 확인할 수 있습니다.
 
-## Project Overview
+## 1. 프로젝트 소개
 
-- 실제 DOM을 읽어 Virtual DOM으로 변환합니다.
-- 이전 VDOM과 새 VDOM을 비교해 변경점만 실제 DOM에 반영합니다.
-- 실제 영역과 테스트 영역을 분리해 Patch, Undo, Redo, Reset 흐름을 검증합니다.
-- 서버나 빌드 도구 없이 브라우저에서 바로 실행하는 구조를 유지합니다.
-- 순수 로직 계층은 `node:test`와 GitHub Actions CI로 검증하고, DOM/UI 계층은 수동 스모크 테스트로 검증합니다.
+- 구현 기준 문서는 `docs/TEAM_SPEC.md`입니다.
+- 브라우저에서 바로 실행하는 ESM 구조를 유지합니다.
+- UI 계층은 실제 렌더 트리의 루트 노드 1개를 기준으로 patch를 적용합니다.
+- 테스트 영역은 `contenteditable`로 편집하고, 실제 영역은 patch 또는 전체 렌더로 반영합니다.
 
-## Core Features
+## 2. 핵심 기능
 
 - DOM -> VDOM 변환
 - VDOM -> DOM 렌더링
-- Index 기반 children diff
-- Patch 기반 DOM 업데이트
-- History 기반 Undo / Redo
-- Patch / VDOM / History 디버그 패널
+- index 기반 children diff
+- Patch 기반 부분 업데이트
+- History 기반 Undo / Redo / Reset
+- Patch / Current VDOM / History 디버그 패널
 
-## Team Workflow
-
-- 구현 기준 문서: `docs/TEAM_SPEC.md`
-- 에이전트 공통 규칙: `docs/AGENT_RULES.md`
-- 역할별 작업 지시:
-  - `docs/AGENT_PERSON_A.md`
-  - `docs/AGENT_PERSON_B.md`
-  - `docs/AGENT_PERSON_C.md`
-- 병합 진행 기록: `docs/INTEGRATION_LOG.md`
-
-## Branches
-
-- `main`: 공통 스캐폴드와 최종 통합 브랜치
-- `feat/vdom-personA`
-- `feat/diff-personB`
-- `feat/app-personC`
-
-## Folder Structure
+## 3. 폴더 구조
 
 ```text
 project-root/
-├─ package.json
-├─ .github/
-│  └─ workflows/
-│     └─ ci.yml
-├─ index.html
-├─ README.md
 ├─ assets/
-│  └─ sample-html.js
+├─ docs/
 ├─ src/
 │  ├─ app.js
 │  ├─ core/
-│  │  ├─ vdom.js
-│  │  ├─ render.js
-│  │  ├─ diff.js
-│  │  ├─ patch.js
-│  │  ├─ dom-utils.js
-│  │  └─ path-utils.js
 │  ├─ state/
-│  │  └─ history.js
 │  ├─ ui/
-│  │  ├─ bindings.js
-│  │  └─ debug-panel.js
 │  └─ styles/
-│     └─ main.css
 ├─ tests/
-│  └─ unit/
-│     ├─ core/
-│     │  └─ *.test.js
-│     └─ state/
-│        └─ *.test.js
-└─ docs/
-   ├─ TEAM_SPEC.md
-   ├─ AGENT_RULES.md
-   ├─ AGENT_PERSON_A.md
-   ├─ AGENT_PERSON_B.md
-   ├─ AGENT_PERSON_C.md
-   └─ INTEGRATION_LOG.md
+├─ index.html
+├─ package.json
+└─ README.md
 ```
 
-## Virtual DOM Shape
+## 4. Virtual DOM 구조
+
+ElementVNode
 
 ```js
 {
   nodeType: "element",
   tag: "div",
-  props: {},
+  props: {
+    class: "card"
+  },
   children: []
 }
 ```
+
+TextVNode
 
 ```js
 {
@@ -97,48 +60,56 @@ project-root/
 }
 ```
 
-## Diff and Patch Scope
+## 5. Diff 알고리즘 설명
 
-- Patch 타입은 `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS`만 사용합니다.
-- children diff는 반드시 index 기반입니다.
-- key 기반 reconciliation은 구현하지 않습니다.
-- 이벤트 핸들러 diff는 이번 범위에서 제외합니다.
+- `diff(oldVNode, newVNode)`는 `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS` patch만 생성합니다.
+- children 비교는 항상 index 기반입니다.
+- key 기반 재정렬 최적화는 지원하지 않습니다.
+- `path=[]`는 렌더 트리의 실제 루트 DOM 노드 자신을 의미합니다.
 
-## History
+## 6. Patch 적용 방식
 
-- 구조: `{ stack: [/* snapshots */], index: 0 }`
-- Undo는 `index > 0`일 때만 가능
-- Redo는 `index < stack.length - 1`일 때만 가능
-- 새 patch 후 redo 이력은 삭제합니다.
+- `#real-root`, `#test-root`는 patch 대상 자체가 아니라 렌더 컨테이너입니다.
+- `currentVNode`는 컨테이너 내부의 실제 루트 노드 1개를 표현합니다.
+- Patch 버튼은 `#test-root`의 child 구조를 읽어 새 VDOM을 만들고, 실제 적용은 `applyPatches(realRoot.firstChild, patches)`처럼 실제 루트 노드에 수행합니다.
+- Undo, Redo, Reset은 두 컨테이너에 대해 `renderVNode`로 전체 렌더를 다시 수행합니다.
 
-## Test and CI
+## 7. History / Undo / Redo
 
-- 자동 테스트 러너는 Node 내장 `node:test`와 `assert/strict`입니다.
-- 자동화 범위는 `diff`, `diffProps`, `diffChildren`, `createHistory`, `pushHistory`, `undoHistory`, `redoHistory`, `getCurrentHistoryVNode`, `isRootPath`이며 필요 시 `cloneVNode`를 포함합니다.
-- DOM 의존성이 큰 `domToVNode`, `domChildrenToVNodes`, `createDomFromVNode`, `renderVNode`, `applyPatch`, `applyPatches`, `bindControls`, `initApp`, debug panel 갱신 로직은 수동 스모크 테스트 범위로 유지합니다.
-- 테스트 파일 위치는 `tests/unit/**/*.test.js`입니다.
-- 실행 명령:
-  - `npm test`
-  - `npm run test:unit`
-  - `npm run ci`
-- GitHub Actions CI는 `push`와 `pull_request`마다 Node 22에서 `npm test`를 실행합니다.
+- history 구조는 `{ stack, index }`입니다.
+- `stack[0]`은 항상 초기 snapshot입니다.
+- 새 patch를 push하면 현재 index 뒤 redo 이력은 제거됩니다.
+- Undo는 `index > 0`, Redo는 `index < stack.length - 1`일 때만 이동합니다.
+- 디버그 패널은 현재 index와 stack length를 함께 표시합니다.
+
+## 8. 테스트 및 CI
+
+- 현재 `package.json`은 `test`, `test:unit`, `ci` 스크립트를 제공합니다.
+- 현재 `.github/workflows/ci.yml`은 Node 22에서 `npm test`를 실행하도록 구성돼 있습니다.
+- 자동 테스트 범위는 순수 로직 계층 기준입니다.
+- DOM/UI 의존성이 큰 `initApp`, `bindControls`, debug panel 갱신, patch DOM 반영은 수동 스모크 테스트 중심으로 확인합니다.
 
 수동 스모크 테스트 항목:
+
 1. 초기 샘플 렌더링 확인
-2. Patch 버튼 클릭 시 실제 영역 반영 확인
-3. Undo / Redo UI 흐름 확인
-4. patch 후 테스트 영역 재동기화 확인
-5. debug panel 갱신 확인
-6. 의미 없는 공백 텍스트 노드가 과도한 변경을 만들지 않는지 확인
+2. 테스트 영역 텍스트 수정 후 Patch 반영 확인
+3. 속성 변경과 자식 추가/삭제 후 Patch 반영 확인
+4. 3회 patch 후 undo 2회, redo 1회 흐름 확인
+5. undo 후 새 patch 시 redo 이력 폐기 확인
+6. Reset 후 초기 상태 복구 확인
+7. debug panel과 버튼 disabled 상태 갱신 확인
 
-## Limits
+## 9. 한계점
 
-- children reorder 최적화 미지원
-- 이벤트 핸들러 diff 미지원
-- 복잡한 form 상태 동기화 미지원
-- `contenteditable` 결과가 브라우저별로 다를 수 있음
+- children diff는 index 기반이라 reorder 최적화를 지원하지 않습니다.
+- 이벤트 핸들러 diff를 지원하지 않습니다.
+- 복잡한 form 상태 동기화는 다루지 않습니다.
+- `contenteditable` 편집 결과는 브라우저별로 차이가 날 수 있습니다.
+- 테스트 영역이 단일 루트 구조를 잃으면 patch 전에 재동기화가 필요할 수 있습니다.
 
-## Retrospective
+## 10. 회고
 
-- 브랜치 병합 후 각 역할별 구현 이슈와 인터페이스 조정 내역을 기록합니다.
-- 최종 회고는 데모와 통합 테스트가 끝난 뒤 문서화합니다.
+- Person A는 DOM/VDOM 변환과 렌더 계층을 담당합니다.
+- Person B는 diff/patch 엔진과 path 규칙을 담당합니다.
+- Person C는 앱 초기화, history, UI 바인딩, debug panel, README를 담당합니다.
+- 최종 통합은 문서 규약 우선으로 병합합니다.
