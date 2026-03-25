@@ -52,6 +52,52 @@ function refreshUi({ patches = [], vNode, historyState }) {
   setButtonState(getButtonFlags(historyState));
 }
 
+function setBootstrapError(message) {
+  const patchLog = document.querySelector("#patch-log");
+  const vdomLog = document.querySelector("#vdom-log");
+  const historyLog = document.querySelector("#history-log");
+  const patchButton = document.querySelector("#patch-btn");
+  const undoButton = document.querySelector("#undo-btn");
+  const redoButton = document.querySelector("#redo-btn");
+  const resetButton = document.querySelector("#reset-btn");
+
+  if (patchLog) {
+    patchLog.textContent = message;
+  }
+
+  if (vdomLog) {
+    vdomLog.textContent = "null";
+  }
+
+  if (historyLog) {
+    historyLog.textContent = JSON.stringify(
+      {
+        index: 0,
+        length: 0,
+        stack: [],
+      },
+      null,
+      2,
+    );
+  }
+
+  if (patchButton) {
+    patchButton.disabled = true;
+  }
+
+  if (undoButton) {
+    undoButton.disabled = true;
+  }
+
+  if (redoButton) {
+    redoButton.disabled = true;
+  }
+
+  if (resetButton) {
+    resetButton.disabled = true;
+  }
+}
+
 function syncRenderRoots(realRoot, testRoot, currentVNode, historyState, patches = []) {
   renderVNode(currentVNode, realRoot);
   renderVNode(currentVNode, testRoot);
@@ -67,65 +113,75 @@ export function initApp() {
 
   const { realRoot, testRoot } = elements;
 
-  loadSampleHtml(realRoot);
+  try {
+    loadSampleHtml(realRoot);
 
-  const initialVNode = readSingleRootVNode(realRoot);
+    const initialVNode = readSingleRootVNode(realRoot);
 
-  if (!initialVNode) {
-    return;
-  }
+    if (!initialVNode) {
+      setBootstrapError("앱 초기화 실패: 샘플에서 단일 루트 VDOM을 만들 수 없습니다.");
+      return;
+    }
 
-  const initialSnapshot = cloneVNode(initialVNode);
-  let currentVNode = cloneVNode(initialSnapshot);
-  let historyState = createHistory(initialSnapshot);
+    const initialSnapshot = cloneVNode(initialVNode);
+    let currentVNode = cloneVNode(initialSnapshot);
+    let historyState = createHistory(initialSnapshot);
 
-  renderVNode(currentVNode, testRoot);
-  refreshUi({ patches: [], vNode: currentVNode, historyState });
+    renderVNode(currentVNode, testRoot);
+    refreshUi({ patches: [], vNode: currentVNode, historyState });
 
-  bindControls({
-    onPatch: () => {
-      const newVNode = readSingleRootVNode(testRoot);
+    bindControls({
+      onPatch: () => {
+        const newVNode = readSingleRootVNode(testRoot);
 
-      if (!newVNode || !realRoot.firstChild) {
-        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
-        return;
-      }
+        if (!newVNode || !realRoot.firstChild) {
+          syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+          return;
+        }
 
-      const patches = diff(currentVNode, newVNode);
+        const patches = diff(currentVNode, newVNode);
 
-      if (patches.length === 0) {
+        if (patches.length === 0) {
+          renderVNode(currentVNode, testRoot);
+          refreshUi({ patches, vNode: currentVNode, historyState });
+          return;
+        }
+
+        applyPatches(realRoot.firstChild, patches);
+
+        currentVNode = cloneVNode(newVNode);
+        historyState = pushHistory(historyState, currentVNode);
+
         renderVNode(currentVNode, testRoot);
         refreshUi({ patches, vNode: currentVNode, historyState });
-        return;
-      }
+      },
+      onUndo: () => {
+        historyState = undoHistory(historyState);
+        currentVNode = getCurrentHistoryVNode(historyState);
 
-      applyPatches(realRoot.firstChild, patches);
+        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+      },
+      onRedo: () => {
+        historyState = redoHistory(historyState);
+        currentVNode = getCurrentHistoryVNode(historyState);
 
-      currentVNode = cloneVNode(newVNode);
-      historyState = pushHistory(historyState, currentVNode);
+        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+      },
+      onReset: () => {
+        currentVNode = cloneVNode(initialSnapshot);
+        historyState = createHistory(initialSnapshot);
 
-      renderVNode(currentVNode, testRoot);
-      refreshUi({ patches, vNode: currentVNode, historyState });
-    },
-    onUndo: () => {
-      historyState = undoHistory(historyState);
-      currentVNode = getCurrentHistoryVNode(historyState);
+        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? `앱 초기화 실패: ${error.message}`
+        : "앱 초기화 실패: core 모듈이 아직 준비되지 않았습니다.";
 
-      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
-    },
-    onRedo: () => {
-      historyState = redoHistory(historyState);
-      currentVNode = getCurrentHistoryVNode(historyState);
-
-      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
-    },
-    onReset: () => {
-      currentVNode = cloneVNode(initialSnapshot);
-      historyState = createHistory(initialSnapshot);
-
-      syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
-    },
-  });
+    setBootstrapError(message);
+  }
 }
 
 initApp();
