@@ -1,5 +1,8 @@
 # My React Playground
 
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/10b5c081-373d-40f5-9be8-a412a012737d" />
+
+
 브라우저의 실제 DOM을 Virtual DOM으로 변환하고, 이전 상태와 새 상태를 비교해 변경된 부분만 patch로 반영하는 Vanilla JavaScript 프로젝트입니다.
 
 ## Overview
