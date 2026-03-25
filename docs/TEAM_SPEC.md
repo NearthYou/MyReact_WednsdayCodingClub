@@ -50,6 +50,7 @@
 - 노드 스키마 고정
 - 속성 추출 규칙 구현
 - 공백 텍스트 처리 규칙 구현
+- DOM/렌더 계층 수동 스모크 테스트 정리
 
 구현 파일:
 - `src/core/vdom.js`
@@ -59,6 +60,7 @@
 주의:
 - Diff에서 기대하는 VDOM 형식을 절대 변경하지 않는다.
 - tag, props, children, text 필드명은 문서와 동일해야 한다.
+- `cloneVNode`는 순수 함수지만 v1에서는 자동 테스트 의무 대상이 아니다.
 
 ---
 
@@ -69,11 +71,14 @@
 - patch 실제 DOM 적용
 - props diff, children diff 규칙 구현
 - patch path 탐색 유틸 구현
+- diff/path-utils 단위 테스트 작성
 
 구현 파일:
 - `src/core/diff.js`
 - `src/core/patch.js`
 - 필요 시 `src/core/path-utils.js`
+- `tests/unit/core/diff.test.js`
+- `tests/unit/core/path-utils.test.js`
 
 주의:
 - patch 타입 이름을 변경하지 않는다.
@@ -89,6 +94,9 @@
 - History 저장 및 이동
 - 초기 샘플 로드
 - 디버그 패널, patch 로그, 상태 표시
+- history 단위 테스트 작성
+- `package.json` 테스트 스크립트 구성
+- GitHub Actions CI 워크플로 구성
 - README 초안 및 데모 시나리오 정리
 
 구현 파일:
@@ -97,6 +105,9 @@
 - `src/ui/bindings.js`
 - `src/ui/debug-panel.js`
 - `src/styles/main.css`
+- `tests/unit/state/history.test.js`
+- `package.json`
+- `.github/workflows/ci.yml`
 
 주의:
 - core 계층의 exported function 시그니처를 임의 수정하지 않는다.
@@ -114,6 +125,9 @@
 6. children 비교는 **index 기반**으로만 구현한다.
 7. 이벤트 핸들러 diff는 이번 범위에서 제외한다.
 8. 브라우저에서 바로 실행 가능해야 하며 빌드 도구 의존성 없이 동작 가능해야 한다.
+9. 순수 로직 계층은 Node 내장 `node:test`와 `assert/strict`로 자동 테스트한다.
+10. DOM/UI 의존 계층은 별도 DOM 테스트 환경 도입 전까지 수동 스모크 테스트로 검증한다.
+11. 자동화 범위에 속한 로직을 수정하면 관련 단위 테스트도 반드시 함께 수정한다.
 
 ---
 
@@ -122,6 +136,10 @@
 
 ```text
 project-root/
+├─ package.json
+├─ .github/
+│  └─ workflows/
+│     └─ ci.yml
 ├─ index.html
 ├─ README.md
 ├─ assets/
@@ -142,8 +160,19 @@ project-root/
 │  │  └─ debug-panel.js
 │  └─ styles/
 │     └─ main.css
+├─ tests/
+│  └─ unit/
+│     ├─ core/
+│     │  └─ *.test.js
+│     └─ state/
+│        └─ *.test.js
 └─ docs/
-   └─ TEAM_SPEC.md
+   ├─ TEAM_SPEC.md
+   ├─ AGENT_RULES.md
+   ├─ AGENT_PERSON_A.md
+   ├─ AGENT_PERSON_B.md
+   ├─ AGENT_PERSON_C.md
+   └─ INTEGRATION_LOG.md
 ```
 
 ### 파일 생성 규칙
@@ -151,6 +180,8 @@ project-root/
 - 폴더명 변경 금지
 - ESM 사용: `type="module"`
 - import 경로는 상대경로 사용
+- 자동 테스트 파일은 `tests/unit/**/*.test.js` 아래에만 추가
+- CI는 GitHub Actions에서 Node 22로 `npm test`를 실행
 
 ---
 
@@ -635,7 +666,7 @@ export function setButtonState({ canUndo, canRedo }) {}
 - [ ] `createDomFromVNode` 구현
 - [ ] `renderVNode` 구현
 - [ ] `setDomProps` 구현
-- [ ] 공백 텍스트 필터링 테스트
+- [ ] 공백 텍스트 필터링 수동 스모크 테스트 정리
 - [ ] 샘플 HTML이 VDOM으로 정확히 변환되는지 확인
 
 ### Person B 할 일
@@ -646,16 +677,22 @@ export function setButtonState({ canUndo, canRedo }) {}
 - [ ] `getParentNodeByPath` 구현
 - [ ] `applyPatch` 구현
 - [ ] `applyPatches` 구현
-- [ ] 5가지 핵심 케이스 테스트
+- [ ] `tests/unit/core/diff.test.js` 작성
+- [ ] `tests/unit/core/path-utils.test.js` 작성
+- [ ] 핵심 diff 케이스 자동 테스트
 
 ### Person C 할 일
 - [ ] `initApp` 구현
 - [ ] 버튼 이벤트 연결
 - [ ] history 모듈 구현
+- [ ] `tests/unit/state/history.test.js` 작성
+- [ ] `package.json` 테스트 스크립트 구성
+- [ ] `.github/workflows/ci.yml` 구성
 - [ ] 디버그 패널 구현
 - [ ] undo/redo 버튼 상태 반영
 - [ ] 초기 샘플 로드
 - [ ] README 초안 작성
+- [ ] README의 테스트 및 CI 섹션 작성
 - [ ] 데모 시나리오 정리
 
 ---
@@ -669,6 +706,8 @@ merge 전 반드시 아래를 점검한다.
 - [ ] import 경로가 깨지지 않는가
 - [ ] VDOM 키 이름이 동일한가
 - [ ] patch 타입 이름이 동일한가
+- [ ] `package.json`과 `.github/workflows/ci.yml`이 존재하는가
+- [ ] `npm test`가 통과하는가
 
 ### 기능
 - [ ] text 변경 반영
@@ -679,12 +718,29 @@ merge 전 반드시 아래를 점검한다.
 - [ ] undo 작동
 - [ ] redo 작동
 - [ ] undo 후 새 patch 시 redo 이력 삭제
+- [ ] DOM/UI 수동 스모크 테스트 항목이 정리되어 있는가
 
 ---
 
-## 22. 테스트 케이스 명세
-최소 아래 케이스는 수동 테스트한다.
+## 22. 테스트 및 CI 명세
 
+### 22.1 자동 테스트 정책
+- 자동화 범위는 순수 로직 계층으로 제한한다.
+- 테스트 러너는 Node 내장 `node:test`와 `assert/strict`만 사용한다.
+- 테스트 파일 위치는 `tests/unit/**/*.test.js`로 고정한다.
+- 자동화 대상:
+  - `diff`, `diffProps`, `diffChildren`
+  - `createHistory`, `pushHistory`, `undoHistory`, `redoHistory`, `getCurrentHistoryVNode`
+  - `isRootPath`
+  - 필요 시 `cloneVNode`
+- 이번 CI에서 제외하는 대상:
+  - `domToVNode`, `domChildrenToVNodes`
+  - `createDomFromVNode`, `renderVNode`
+  - `applyPatch`, `applyPatches`
+  - `bindControls`, `initApp`, debug panel 갱신 로직
+- 자동화 범위에 속한 로직을 구현하거나 수정하면 관련 단위 테스트도 반드시 함께 추가하거나 수정한다.
+
+### 22.2 자동 테스트 필수 케이스
 1. 텍스트 변경
 ```html
 <p>Hello</p> -> <p>Hello world</p>
@@ -710,23 +766,36 @@ merge 전 반드시 아래를 점검한다.
 <p>Hello</p> -> <h1>Hello</h1>
 ```
 
-6. 중첩 구조 변경
+6. 중첩 구조 path 탐색
 ```html
 <div><section><p>A</p></section></div>
 ```
-에서 `p` 텍스트 수정
+에서 `p` 텍스트 수정과 경로 탐색 확인
 
 7. 다중 변경
 - 텍스트 수정 + props 변경 + 노드 추가 동시에 발생
 
-8. Undo / Redo
-- 3회 patch 후 undo 2회, redo 1회
+8. History push / undo / redo
+- snapshot 저장, 현재 index 이동, `getCurrentHistoryVNode` 반환 확인
 
 9. Redo 폐기
-- undo 후 새 patch 생성 시 redo 불가 확인
+- undo 후 새 history push 시 redo 이력 삭제 확인
 
-10. 공백 노드 처리
-- 줄바꿈/들여쓰기 때문에 diff가 과도하게 생기지 않는지 확인
+10. Root path 판별
+- `[]`만 루트로 판단하고 나머지 path는 false인지 확인
+
+### 22.3 수동 스모크 테스트
+- 초기 샘플 렌더링 확인
+- Patch 버튼 클릭 시 실제 영역 반영 확인
+- Undo / Redo UI 흐름 확인
+- patch 후 테스트 영역 재동기화 확인
+- debug panel 갱신 확인
+- 의미 없는 공백 텍스트 노드가 과도한 변경을 만들지 않는지 확인
+
+### 22.4 CI 규약
+- 루트 `package.json`에는 `test`, `test:unit`, `ci` 스크립트를 둔다.
+- `npm test`는 `tests/unit/**/*.test.js`를 실행한다.
+- `.github/workflows/ci.yml`은 `push`와 `pull_request`마다 Node 22에서 `npm test`를 실행한다.
 
 ---
 
@@ -759,26 +828,44 @@ merge 전 반드시 아래를 점검한다.
 ```text
 아래 명세서를 절대 기준으로 삼아 구현해줘.
 파일명, export 함수명, 자료구조 키 이름을 바꾸면 안 돼.
-지정된 파일만 수정하고 다른 파일은 수정하지 마.
+담당 범위와 문서에 명시된 테스트/CI 설정 파일만 수정하고 다른 파일은 수정하지 마.
 Vanilla JavaScript ESM 기준으로 작성해줘.
+
+이번 작업에는 자동 테스트와 CI 구축도 포함해.
+새 테스트 패키지는 추가하지 말고 Node 내장 `node:test`와 `assert/strict`만 사용해.
+자동화 범위는 순수 로직 계층으로 제한해.
+우선 `diff`, `diffProps`, `diffChildren`, `createHistory`, `pushHistory`, `undoHistory`, `redoHistory`, `getCurrentHistoryVNode`, `isRootPath`를 테스트해.
+필요하면 순수 함수인 `cloneVNode`도 테스트해.
+
+DOM 의존성이 큰 `domToVNode`, `domChildrenToVNodes`, `createDomFromVNode`, `renderVNode`, `applyPatch`, `applyPatches`, `bindControls`, `initApp`, debug panel 갱신 로직은 이번 CI 대상에서 제외하고 수동 스모크 테스트만 정리해.
+
+테스트 파일은 `tests/unit/**/*.test.js`에 추가해.
+루트 `package.json`에는 `test`, `test:unit`, `ci` 스크립트를 만든다.
+`.github/workflows/ci.yml`에서는 `push`와 `pull_request`마다 Node 22에서 `npm test`를 실행하게 한다.
+
+자동화 범위에 해당하는 기능을 구현하거나 수정하면 관련 단위 테스트도 반드시 함께 추가하거나 수정해.
+작업 결과에는 수정한 파일 목록, 추가한 테스트 파일, 실행한 명령, 통과/실패 여부, 남은 수동 테스트 항목을 포함해.
 ```
 
 ### Person A용 추가 문장
 ```text
 Virtual DOM 스키마는 nodeType, tag, props, children, text 키를 그대로 사용해.
 공백 텍스트 노드 제거 규칙을 반드시 반영해.
+DOM/렌더 계층은 수동 스모크 테스트 항목까지 함께 정리해.
 ```
 
 ### Person B용 추가 문장
 ```text
 Patch 타입은 CREATE, REMOVE, REPLACE, TEXT, PROPS만 사용해.
 children diff는 index 기반으로만 구현하고 key 비교는 금지해.
+`diff`, `diffProps`, `diffChildren`, `isRootPath`를 변경하면 관련 unit test도 함께 수정해.
 ```
 
 ### Person C용 추가 문장
 ```text
 core 모듈의 인터페이스는 수정하지 말고 호출만 해.
 Undo/Redo는 historyState { stack, index } 구조를 그대로 써.
+`history.js`를 변경하면 관련 unit test를 함께 수정하고 `package.json`과 `.github/workflows/ci.yml`의 테스트 흐름을 유지해.
 ```
 
 ---
@@ -793,7 +880,7 @@ README는 아래 목차를 최소 포함해야 한다.
 5. Diff 알고리즘 설명
 6. Patch 적용 방식
 7. History / Undo / Redo
-8. 테스트 케이스
+8. 테스트 및 CI
 9. 한계점
 10. 회고
 

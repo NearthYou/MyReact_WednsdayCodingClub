@@ -20,8 +20,8 @@
 ## File Ownership
 
 - Person A: `src/core/vdom.js`, `src/core/render.js`, 필요 시 `src/core/dom-utils.js`
-- Person B: `src/core/diff.js`, `src/core/patch.js`, 필요 시 `src/core/path-utils.js`
-- Person C: `src/app.js`, `src/state/history.js`, `src/ui/bindings.js`, `src/ui/debug-panel.js`, `src/styles/main.css`, `README.md`
+- Person B: `src/core/diff.js`, `src/core/patch.js`, 필요 시 `src/core/path-utils.js`, `tests/unit/core/diff.test.js`, `tests/unit/core/path-utils.test.js`
+- Person C: `src/app.js`, `src/state/history.js`, `src/ui/bindings.js`, `src/ui/debug-panel.js`, `src/styles/main.css`, `README.md`, `tests/unit/state/history.test.js`, `package.json`, `.github/workflows/ci.yml`
 - 통합자 전용: `docs/TEAM_SPEC.md`, `docs/AGENT_RULES.md`, `docs/INTEGRATION_LOG.md`
 
 ## Non-Negotiable Rules
@@ -35,6 +35,9 @@
 - `innerHTML`로 실제 영역 전체를 매번 갈아엎는 방식은 허용하지 않는다.
 - children diff는 index 기반으로만 구현한다.
 - 이벤트 핸들러 diff는 구현 범위에서 제외한다.
+- 자동 테스트는 Node 내장 `node:test`와 `assert/strict`만 사용한다.
+- 자동화 범위(`diff`, `diffProps`, `diffChildren`, `createHistory`, `pushHistory`, `undoHistory`, `redoHistory`, `getCurrentHistoryVNode`, `isRootPath`, 필요 시 `cloneVNode`)를 수정하면 관련 unit test도 함께 수정한다.
+- DOM/UI 의존 계층은 이번 CI 범위에서 제외하고 수동 스모크 테스트로 검증한다.
 
 ## API Change Request Policy
 
@@ -61,10 +64,14 @@
 에이전트는 작업을 마칠 때 아래 정보를 반드시 남긴다.
 
 1. 수정한 파일 목록
-2. 완료한 기능
-3. 직접 수행한 수동 테스트
-4. 남은 리스크
-5. 필요한 API 변경 요청 여부
+2. 추가/수정한 테스트 파일
+3. 완료한 기능
+4. 실행한 명령
+5. 통과/실패 여부
+6. 직접 수행한 수동 테스트
+7. 남은 수동 테스트
+8. 남은 리스크
+9. 필요한 API 변경 요청 여부
 
 ## Prompt Header
 
@@ -73,6 +80,21 @@
 ```text
 아래 명세서를 절대 기준으로 삼아 구현해줘.
 파일명, export 함수명, 자료구조 키 이름을 바꾸면 안 돼.
-지정된 파일만 수정하고 다른 파일은 수정하지 마.
+담당 범위와 문서에 명시된 테스트/CI 설정 파일만 수정하고 다른 파일은 수정하지 마.
 Vanilla JavaScript ESM 기준으로 작성해줘.
+
+이번 작업에는 자동 테스트와 CI 구축도 포함해.
+새 테스트 패키지는 추가하지 말고 Node 내장 `node:test`와 `assert/strict`만 사용해.
+자동화 범위는 순수 로직 계층으로 제한해.
+우선 `diff`, `diffProps`, `diffChildren`, `createHistory`, `pushHistory`, `undoHistory`, `redoHistory`, `getCurrentHistoryVNode`, `isRootPath`를 테스트해.
+필요하면 순수 함수인 `cloneVNode`도 테스트해.
+
+DOM 의존성이 큰 `domToVNode`, `domChildrenToVNodes`, `createDomFromVNode`, `renderVNode`, `applyPatch`, `applyPatches`, `bindControls`, `initApp`, debug panel 갱신 로직은 이번 CI 대상에서 제외하고 수동 스모크 테스트만 정리해.
+
+테스트 파일은 `tests/unit/**/*.test.js`에 추가해.
+루트 `package.json`에는 `test`, `test:unit`, `ci` 스크립트를 만든다.
+`.github/workflows/ci.yml`에서는 `push`와 `pull_request`마다 Node 22에서 `npm test`를 실행하게 한다.
+
+자동화 범위에 해당하는 기능을 구현하거나 수정하면 관련 단위 테스트도 반드시 함께 추가하거나 수정해.
+작업 결과에는 수정한 파일 목록, 추가한 테스트 파일, 실행한 명령, 통과/실패 여부, 남은 수동 테스트 항목을 포함해.
 ```

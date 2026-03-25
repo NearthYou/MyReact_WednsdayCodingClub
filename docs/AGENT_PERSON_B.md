@@ -9,6 +9,8 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - `src/core/diff.js`
 - `src/core/patch.js`
 - 필요 시 `src/core/path-utils.js`
+- `tests/unit/core/diff.test.js`
+- `tests/unit/core/path-utils.test.js`
 
 ## Must Implement
 
@@ -19,6 +21,8 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - `applyPatches`
 - `getNodeByPath`
 - `getParentNodeByPath`
+- `tests/unit/core/diff.test.js`
+- `tests/unit/core/path-utils.test.js`
 
 ## Required Invariants
 
@@ -27,6 +31,8 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - key 기반 reconciliation과 reorder 최적화는 구현하지 않는다.
 - path는 루트 기준 인덱스 배열을 사용한다.
 - diff 결과는 patch 배열이어야 한다.
+- `diff`, `diffProps`, `diffChildren`, `isRootPath`는 자동 테스트 범위에 포함된다.
+- `applyPatch`, `applyPatches`는 v1에서 수동 스모크 테스트 범위로 둔다.
 
 ## Forbidden Changes
 
@@ -40,6 +46,7 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - patch를 실제 DOM에 안정적으로 적용할 수 있다.
 - remove 순서로 인한 경로 깨짐 없이 동작한다.
 - `[]` 루트 path도 처리 가능하다.
+- diff/path-utils unit test가 추가되고 `node:test` 기준으로 통과한다.
 
 ## Manual Checks
 
@@ -49,3 +56,4 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - 노드 삭제
 - 태그 교체
 - 중첩 구조 path 탐색
+- patch 적용 결과는 실제 DOM에서 수동으로 확인

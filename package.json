@@ -1,0 +1,10 @@
+{
+  "name": "mini-virtual-dom-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit",
+    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
+    "ci": "npm test"
+  }
+}
