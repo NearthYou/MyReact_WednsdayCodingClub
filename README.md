@@ -10,59 +10,100 @@
 - `Patch`, `Undo`, `Redo`, `Reset`
 - `Patch Log`, `Current VDOM`, `History` 디버그 패널 제공
 
-## Why
+## DOM -> VDOM
 
-이 프로젝트는 "화면 전체를 다시 그리는 대신, 바뀐 부분만 업데이트한다"는 Virtual DOM의 핵심 개념을 직접 구현하고 시각적으로 확인하는 데 목적이 있습니다.
+이 프로젝트는 테스트 영역이나 실제 렌더링 영역의 DOM을 읽어서 `VNode` 트리로 변환합니다.  
+변환은 [`src/core/vdom.js`](C:\Users\fhrhd\바탕 화면\Jungle\Week04\MyReact_WednsdayCodingClub\src\core\vdom.js) 의 `domToVNode`, `domChildrenToVNodes`를 중심으로 처리됩니다.
 
-## Architecture
+### 변환 흐름
 
-### 전체 동작 흐름
+```mermaid
+flowchart TD
+    A[DOM Node] --> B{nodeType 확인}
+    B -->|Comment| C[무시]
+    B -->|Text| D[공백 여부 확인]
+    D -->|공백만 있음| C
+    D -->|텍스트 유지| E[Text VNode 생성]
+    B -->|Element| F[속성 수집]
+    F --> G[이벤트 속성 제외]
+    G --> H[자식 노드 재귀 순회]
+    H --> I[Element VNode 생성]
+```
+
+### 변환 예시
+
+```html
+<div class="card">
+  <h1>Hello</h1>
+  <p title="intro">Virtual DOM</p>
+</div>
+```
+
+```js
+{
+  nodeType: "element",
+  tag: "div",
+  props: { class: "card" },
+  children: [
+    {
+      nodeType: "element",
+      tag: "h1",
+      props: {},
+      children: [{ nodeType: "text", text: "Hello" }]
+    },
+    {
+      nodeType: "element",
+      tag: "p",
+      props: { title: "intro" },
+      children: [{ nodeType: "text", text: "Virtual DOM" }]
+    }
+  ]
+}
+```
+
+## Rendering And Patch Flow
+
+초기 렌더링은 샘플 HTML을 읽어 VDOM으로 만든 뒤, 이를 테스트 영역에 렌더링하는 방식으로 시작합니다.  
+이후 사용자가 테스트 영역을 수정하면 새 VDOM을 만든 뒤 diff 결과만 실제 DOM에 반영합니다.
+
+### 업데이트 흐름
 
 ```mermaid
 flowchart LR
-    A[사용자: 테스트 영역 수정] --> B[DOM -> VDOM]
+    A[사용자: 테스트 영역 수정] --> B[domChildrenToVNodes]
     B --> C[새 VDOM 생성]
     C --> D[diff 현재 VDOM vs 새 VDOM]
     D --> E[patch 생성]
     E --> F[applyPatches]
     F --> G[실제 DOM 반영]
-    G --> H[History / Debug Panel 갱신]
+    G --> H[History 저장]
+    H --> I[Debug Panel 갱신]
 ```
 
-### 모듈 구조
+### Patch 버튼 기준 처리 순서
 
 ```mermaid
-flowchart TB
-    APP[app.js]
+sequenceDiagram
+    participant U as User
+    participant T as Test Root
+    participant A as app.js
+    participant V as vdom.js
+    participant D as diff.js
+    participant P as patch.js
+    participant H as history.js
 
-    subgraph CORE[core]
-        VDOM[vdom.js]
-        DIFF[diff.js]
-        PATCH[patch.js]
-        RENDER[render.js]
-    end
-
-    subgraph STATE[state]
-        HISTORY[history.js]
-    end
-
-    subgraph UI[ui]
-        BIND[bindings.js]
-        DEBUG[debug-panel.js]
-        TREE[tree-formatter.js]
-    end
-
-    APP --> VDOM
-    APP --> DIFF
-    APP --> PATCH
-    APP --> RENDER
-    APP --> HISTORY
-    APP --> BIND
-    APP --> DEBUG
-    DEBUG --> TREE
+    U->>T: DOM 수정
+    U->>A: Patch 클릭
+    A->>V: domChildrenToVNodes(testRoot)
+    V-->>A: newVNode
+    A->>D: diff(currentVNode, newVNode)
+    D-->>A: patches
+    A->>P: applyPatches(realRoot, patches)
+    A->>H: pushHistory(newVNode)
+    A-->>U: 실제 영역 / 로그 갱신
 ```
 
-### 핵심 데이터 구조
+## Core Data Structures
 
 ```mermaid
 classDiagram
@@ -98,6 +139,39 @@ classDiagram
 - `REPLACE`
 - `TEXT`
 - `PROPS`
+
+## Architecture
+
+```mermaid
+flowchart TB
+    APP[app.js]
+
+    subgraph CORE[core]
+        VDOM[vdom.js]
+        DIFF[diff.js]
+        PATCH[patch.js]
+        RENDER[render.js]
+    end
+
+    subgraph STATE[state]
+        HISTORY[history.js]
+    end
+
+    subgraph UI[ui]
+        BIND[bindings.js]
+        DEBUG[debug-panel.js]
+        TREE[tree-formatter.js]
+    end
+
+    APP --> VDOM
+    APP --> DIFF
+    APP --> PATCH
+    APP --> RENDER
+    APP --> HISTORY
+    APP --> BIND
+    APP --> DEBUG
+    DEBUG --> TREE
+```
 
 ## Project Structure
 
@@ -137,3 +211,13 @@ docs/
 - children diff는 index 기반이라 reorder 최적화는 지원하지 않습니다.
 - 이벤트 핸들러 diff는 지원하지 않습니다.
 - 복잡한 form 상태 동기화까지는 다루지 않습니다.
+
+## Run
+
+```bash
+npm test
+```
+
+## Presentation Docs
+
+- 발표 대본: `docs/PRESENTATION_SCRIPT.md`
