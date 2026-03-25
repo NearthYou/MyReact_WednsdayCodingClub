@@ -30,7 +30,10 @@ Person B는 diff 계산과 patch 적용 엔진을 구현한다.
 - children diff는 index 기반으로만 구현한다.
 - key 기반 reconciliation과 reorder 최적화는 구현하지 않는다.
 - path는 루트 기준 인덱스 배열을 사용한다.
+- `path=[]`는 실제 루트 DOM 노드 자신을 뜻한다.
+- `getParentNodeByPath(rootElement, [])`는 루트 DOM의 부모를 반환한다.
 - diff 결과는 patch 배열이어야 한다.
+- `applyPatches(rootElement, patches)`의 `rootElement`는 실제 루트 DOM 노드다.
 - `diff`, `diffProps`, `diffChildren`, `isRootPath`는 자동 테스트 범위에 포함된다.
 - `applyPatch`, `applyPatches`는 v1에서 수동 스모크 테스트 범위로 둔다.
 

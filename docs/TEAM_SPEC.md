@@ -405,7 +405,9 @@ export function setDomProps(element, props = {}) {}
 - path는 루트 기준 자식 인덱스 배열
 - 루트 자신은 `[]`
 - `[]`는 루트 교체/루트 props 수정 가능
-- 예: `[1, 0]` = 루트의 두 번째 자식의 첫 번째 자식
+- `getNodeByPath(rootElement, [])`는 `rootElement`를 반환한다.
+- `getParentNodeByPath(rootElement, [])`는 `rootElement.parentNode`를 반환한다.
+- 예: `[1, 0]` = `rootElement.childNodes[1].childNodes[0]`
 
 ---
 
@@ -459,11 +461,15 @@ export function getParentNodeByPath(rootElement, path = []) {}
 ```
 
 ### apply 규칙
+- `applyPatches(rootElement, patches)`의 `rootElement`는 컨테이너가 아니라 실제 렌더 트리의 루트 DOM 노드다.
 - REMOVE는 자식 삭제이므로 parent 탐색 필요
 - CREATE는 parent 탐색 후 지정 인덱스 위치에 삽입
 - REPLACE는 대상 노드를 새 DOM으로 교체
 - TEXT는 대상 text node의 `nodeValue` 변경
 - PROPS는 대상 element에 set/remove 반영
+- 루트 path `[]`는 기존 루트 DOM 노드 자신을 가리킨다.
+- 루트 patch는 `REPLACE`, `REMOVE`, `TEXT`, `PROPS` 기준으로 동작한다.
+- 초기 루트 생성은 patch 단계가 아니라 `renderVNode` 초기 렌더 단계가 담당한다.
 
 ### patch 적용 순서 권장
 1. 깊은 노드부터 REMOVE 처리
@@ -525,13 +531,16 @@ export function initApp() {}
 
 ### Patch 버튼 동작
 1. `#test-root` 현재 DOM 읽기
-2. `newVNode = domToVNode(testRoot)`가 아니라, testRoot의 child 구조를 기준으로 루트 일관성을 유지하도록 처리
+2. `newVNode = domToVNode(testRoot)`가 아니라, testRoot의 child 구조를 기준으로 실제 루트 노드 1개와 일치하도록 처리
 3. `patches = diff(currentVNode, newVNode)`
-4. `applyPatches(realRoot, patches)`
+4. `realRoot`는 `#real-root` 컨테이너이며, patch 적용 시에는 `applyPatches(realRoot.firstChild, patches)`처럼 실제 렌더 루트를 넘긴다.
 5. `currentVNode = cloneVNode(newVNode)`
 6. history push
 7. test 영역을 currentVNode 기준으로 재동기화
 8. debug panel 업데이트
+
+추가 규칙:
+- `currentVNode`와 `newVNode`는 컨테이너 자신이 아니라 컨테이너 내부의 실제 루트 노드 1개를 표현한다.
 
 ### Undo 버튼 동작
 1. history undo
