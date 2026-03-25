@@ -1,8 +1,10 @@
-# Mini Virtual DOM Playground
+# My React Playground
 
 브라우저의 실제 DOM을 Virtual DOM으로 변환하고, 이전 상태와 새 상태를 비교해 변경된 부분만 patch로 반영하는 Vanilla JavaScript 프로젝트입니다.
 
 ## Overview
+
+![poster](./Capture.png)
 
 - DOM -> VDOM 변환
 - VDOM diff 계산
@@ -13,7 +15,7 @@
 ## DOM -> VDOM
 
 이 프로젝트는 테스트 영역이나 실제 렌더링 영역의 DOM을 읽어서 `VNode` 트리로 변환합니다.  
-변환은 [`src/core/vdom.js`](C:\Users\fhrhd\바탕 화면\Jungle\Week04\MyReact_WednsdayCodingClub\src\core\vdom.js) 의 `domToVNode`, `domChildrenToVNodes`를 중심으로 처리됩니다.
+변환은 [`src/core/vdom.js`]의 `domToVNode`, `domChildrenToVNodes`를 중심으로 처리됩니다.
 
 ### 변환 흐름
 
@@ -211,13 +213,3 @@ docs/
 - children diff는 index 기반이라 reorder 최적화는 지원하지 않습니다.
 - 이벤트 핸들러 diff는 지원하지 않습니다.
 - 복잡한 form 상태 동기화까지는 다루지 않습니다.
-
-## Run
-
-```bash
-npm test
-```
-
-## Presentation Docs
-
-- 발표 대본: `docs/PRESENTATION_SCRIPT.md`
