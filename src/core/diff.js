@@ -115,7 +115,7 @@ export function diffProps(oldProps = {}, newProps = {}) {
       continue;
     }
 
-    if (!hasOwn(newProps, name) && !isRemovablePropValue(previousValue) && !remove.includes(name)) {
+    if (!hasOwn(newProps, name) && !remove.includes(name)) {
       remove.push(name);
     }
   }
