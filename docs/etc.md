@@ -56,7 +56,7 @@ Vanilla JavaScript ESM 기준으로 작성해줘.
 - Virtual DOM 스키마는 nodeType, tag, props, children, text 키를 그대로 사용해.
 - 의미 없는 공백 텍스트 노드는 제거해.
 - 주석 노드는 무시해.
-- boolean attribute는 존재 시 "" 문자열로 저장해.
+- boolean attribute는 존재 시 `true`로 저장해.
 - diff에서 기대하는 VDOM 구조를 바꾸지 마.
 - 이벤트 핸들러 diff를 위해 props 규칙을 확장하지 마.
 

@@ -24,7 +24,7 @@ Person A는 DOM -> VDOM 변환과 VDOM -> DOM 렌더링 계층을 구현하고, 
 - VDOM 스키마는 `nodeType`, `tag`, `props`, `children`, `text`를 그대로 사용한다.
 - 의미 없는 공백 텍스트 노드는 제거한다.
 - 주석 노드는 무시한다.
-- boolean attribute는 존재 시 `""` 문자열로 저장한다.
+- boolean attribute는 존재 시 `true`로 저장한다.
 - element node는 반드시 `tag`, `props`, `children`을 가진다.
 - text node는 반드시 `text`를 가진다.
 - DOM/렌더 계층은 v1 CI 자동화 대상이 아니다.
@@ -45,7 +45,7 @@ Person A는 DOM -> VDOM 변환과 VDOM -> DOM 렌더링 계층을 구현하고, 
 
 ## Manual Checks
 
-- `disabled` 같은 boolean attribute가 `""`로 저장되는지 확인
+- `disabled` 같은 boolean attribute가 `true`로 저장되는지 확인
 - `Hello `, ` Hello` 같은 의미 있는 공백은 유지되는지 확인
 - 줄바꿈/들여쓰기만 있는 텍스트 노드는 제거되는지 확인
 - 초기 렌더와 전체 재렌더 결과가 기대한 DOM 구조를 유지하는지 확인
