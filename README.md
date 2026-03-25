@@ -1,118 +1,149 @@
 # Mini Virtual DOM Playground
 
-브라우저 DOM을 Virtual DOM으로 변환하고, diff 결과를 patch로 적용해 실제 DOM을 부분 갱신하는 Vanilla JavaScript 실습 프로젝트입니다. 실제 영역과 편집 가능한 테스트 영역을 분리해 Patch, Undo, Redo, Reset 흐름을 확인할 수 있습니다.
+브라우저의 실제 DOM을 Virtual DOM으로 변환하고, 이전 상태와 새 상태를 비교해 변경된 부분만 patch로 반영하는 Vanilla JavaScript 프로젝트입니다.
 
-## 1. 프로젝트 소개
-
-- 구현 기준 문서는 `docs/TEAM_SPEC.md`입니다.
-- 브라우저에서 바로 실행하는 ESM 구조를 유지합니다.
-- UI 계층은 실제 렌더 트리의 루트 노드 1개를 기준으로 patch를 적용합니다.
-- 테스트 영역은 `contenteditable`로 편집하고, Patch / Undo / Redo는 patch 기반으로 반영합니다. Reset과 비정상 DOM 복구 시에는 전체 렌더를 사용합니다.
-
-## 2. 핵심 기능
+## Overview
 
 - DOM -> VDOM 변환
-- VDOM -> DOM 렌더링
-- index 기반 children diff
-- Patch 기반 부분 업데이트
-- History 기반 Undo / Redo / Reset
-- Patch / Current VDOM / History 디버그 패널
+- VDOM diff 계산
+- patch 기반 부분 업데이트
+- `Patch`, `Undo`, `Redo`, `Reset`
+- `Patch Log`, `Current VDOM`, `History` 디버그 패널 제공
 
-## 3. 폴더 구조
+## Why
+
+이 프로젝트는 "화면 전체를 다시 그리는 대신, 바뀐 부분만 업데이트한다"는 Virtual DOM의 핵심 개념을 직접 구현하고 시각적으로 확인하는 데 목적이 있습니다.
+
+## Architecture
+
+### 전체 동작 흐름
+
+```mermaid
+flowchart LR
+    A[사용자: 테스트 영역 수정] --> B[DOM -> VDOM]
+    B --> C[새 VDOM 생성]
+    C --> D[diff 현재 VDOM vs 새 VDOM]
+    D --> E[patch 생성]
+    E --> F[applyPatches]
+    F --> G[실제 DOM 반영]
+    G --> H[History / Debug Panel 갱신]
+```
+
+### 모듈 구조
+
+```mermaid
+flowchart TB
+    APP[app.js]
+
+    subgraph CORE[core]
+        VDOM[vdom.js]
+        DIFF[diff.js]
+        PATCH[patch.js]
+        RENDER[render.js]
+    end
+
+    subgraph STATE[state]
+        HISTORY[history.js]
+    end
+
+    subgraph UI[ui]
+        BIND[bindings.js]
+        DEBUG[debug-panel.js]
+        TREE[tree-formatter.js]
+    end
+
+    APP --> VDOM
+    APP --> DIFF
+    APP --> PATCH
+    APP --> RENDER
+    APP --> HISTORY
+    APP --> BIND
+    APP --> DEBUG
+    DEBUG --> TREE
+```
+
+### 핵심 데이터 구조
+
+```mermaid
+classDiagram
+    class VNode {
+      +string nodeType
+      +string tag
+      +object props
+      +VNode[] children
+      +string text
+    }
+
+    class Patch {
+      +string type
+      +number[] path
+      +VNode node
+      +string text
+      +object props
+    }
+
+    class HistoryState {
+      +VNode[] stack
+      +number index
+    }
+
+    HistoryState --> VNode : snapshot
+    Patch --> VNode : optional node
+```
+
+## Patch Types
+
+- `CREATE`
+- `REMOVE`
+- `REPLACE`
+- `TEXT`
+- `PROPS`
+
+## Project Structure
 
 ```text
-project-root/
-├─ assets/
-├─ docs/
-├─ src/
-│  ├─ app.js
-│  ├─ core/
-│  ├─ state/
-│  ├─ ui/
-│  └─ styles/
-├─ tests/
-├─ index.html
-├─ package.json
-└─ README.md
+src/
+  app.js
+  core/
+    vdom.js
+    diff.js
+    patch.js
+    render.js
+    dom-utils.js
+    path-utils.js
+  state/
+    history.js
+  ui/
+    bindings.js
+    debug-panel.js
+    tree-formatter.js
+  styles/
+    main.css
+tests/unit/
+assets/
+docs/
 ```
 
-## 4. Virtual DOM 구조
+## Tech Notes
 
-ElementVNode
+- Vanilla JavaScript ESM 기반
+- index 기반 children diff
+- 히스토리 스택 기반 `Undo` / `Redo`
+- 단위 테스트: `node:test`
+- CI: GitHub Actions
 
-```js
-{
-  nodeType: "element",
-  tag: "div",
-  props: {
-    class: "card"
-  },
-  children: []
-}
+## Limitations
+
+- children diff는 index 기반이라 reorder 최적화는 지원하지 않습니다.
+- 이벤트 핸들러 diff는 지원하지 않습니다.
+- 복잡한 form 상태 동기화까지는 다루지 않습니다.
+
+## Run
+
+```bash
+npm test
 ```
 
-TextVNode
+## Presentation Docs
 
-```js
-{
-  nodeType: "text",
-  text: "Hello"
-}
-```
-
-## 5. Diff 알고리즘 설명
-
-- `diff(oldVNode, newVNode)`는 `CREATE`, `REMOVE`, `REPLACE`, `TEXT`, `PROPS` patch만 생성합니다.
-- children 비교는 항상 index 기반입니다.
-- key 기반 재정렬 최적화는 지원하지 않습니다.
-- `path=[]`는 렌더 트리의 실제 루트 DOM 노드 자신을 의미합니다.
-
-## 6. Patch 적용 방식
-
-- `#real-root`, `#test-root`는 patch 대상 자체가 아니라 렌더 컨테이너입니다.
-- `currentVNode`는 컨테이너 내부의 실제 루트 노드 1개를 표현합니다.
-- Patch 버튼은 `#test-root`의 child 구조를 읽어 새 VDOM을 만들고, 실제 적용은 `applyPatches(realRoot.firstChild, patches)`처럼 실제 루트 노드에 수행합니다.
-- Undo와 Redo는 현재 history snapshot과 목표 snapshot 사이의 `diff`를 계산하고, 두 컨테이너 모두에 patch를 적용합니다.
-- `#test-root`처럼 현재 DOM이 `currentVNode`와 어긋난 컨테이너는 patch 대신 `renderVNode`로 해당 컨테이너만 복구합니다.
-- Reset은 두 컨테이너를 `renderVNode`로 전체 렌더합니다.
-
-## 7. History / Undo / Redo
-
-- history 구조는 `{ stack, index }`입니다.
-- `stack[0]`은 항상 초기 snapshot입니다.
-- 새 patch를 push하면 현재 index 뒤 redo 이력은 제거됩니다.
-- Undo는 `index > 0`, Redo는 `index < stack.length - 1`일 때만 이동합니다.
-- Patch Log는 Patch 버튼뿐 아니라 Undo / Redo에서 계산한 patch 배열도 표시합니다.
-- 디버그 패널은 현재 index와 stack length를 함께 표시합니다.
-
-## 8. 테스트 및 CI
-
-- 현재 `package.json`은 `test`, `test:unit`, `ci` 스크립트를 제공합니다.
-- 현재 `.github/workflows/ci.yml`은 Node 22에서 `npm test`를 실행하도록 구성돼 있습니다.
-- 자동 테스트 범위는 순수 로직 계층 기준입니다.
-- DOM/UI 의존성이 큰 `initApp`, `bindControls`, debug panel 갱신, patch DOM 반영은 수동 스모크 테스트 중심으로 확인합니다.
-
-수동 스모크 테스트 항목:
-
-1. 초기 샘플 렌더링 확인
-2. 테스트 영역 텍스트 수정 후 Patch 반영 확인
-3. 속성 변경과 자식 추가/삭제 후 Patch 반영 확인
-4. 3회 patch 후 undo 2회, redo 1회 흐름 확인
-5. undo 후 새 patch 시 redo 이력 폐기 확인
-6. Reset 후 초기 상태 복구 확인
-7. debug panel과 버튼 disabled 상태 갱신 확인
-
-## 9. 한계점
-
-- children diff는 index 기반이라 reorder 최적화를 지원하지 않습니다.
-- 이벤트 핸들러 diff를 지원하지 않습니다.
-- 복잡한 form 상태 동기화는 다루지 않습니다.
-- `contenteditable` 편집 결과는 브라우저별로 차이가 날 수 있습니다.
-- 테스트 영역이 단일 루트 구조를 잃으면 patch 전에 재동기화가 필요할 수 있습니다.
-
-## 10. 회고
-
-- Person A는 DOM/VDOM 변환과 렌더 계층을 담당합니다.
-- Person B는 diff/patch 엔진과 path 규칙을 담당합니다.
-- Person C는 앱 초기화, history, UI 바인딩, debug panel, README를 담당합니다.
-- 최종 통합은 문서 규약 우선으로 병합합니다.
+- 발표 대본: `docs/PRESENTATION_SCRIPT.md`
