@@ -1,6 +1,29 @@
 import { createDomFromVNode, setDomProps } from "./render.js";
 import { isRootPath } from "./path-utils.js";
 
+const TEXT_NODE = 3;
+const COMMENT_NODE = 8;
+
+function isIgnorableNode(node) {
+  if (!node) {
+    return true;
+  }
+
+  if (node.nodeType === Node.COMMENT_NODE) {
+    return true;
+  }
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return (node.nodeValue ?? "").trim() === "";
+  }
+
+  return false;
+}
+
+function getRenderableChildNodes(node) {
+  return Array.from(node?.childNodes ?? []).filter((childNode) => !isIgnorableNode(childNode));
+}
+
 function getLastPathIndex(path = []) {
   if (!Array.isArray(path) || path.length === 0) {
     return -1;
@@ -105,9 +128,10 @@ export function applyPatch(rootElement, patch) {
       }
 
       const insertIndex = getLastPathIndex(patch.path);
+      const renderableChildren = getRenderableChildNodes(parentNode);
       const referenceNode =
         typeof insertIndex === "number" && insertIndex >= 0
-          ? parentNode.childNodes?.[insertIndex] ?? null
+          ? renderableChildren[insertIndex] ?? null
           : null;
 
       parentNode.insertBefore(nextNode, referenceNode);
@@ -208,11 +232,13 @@ export function getNodeByPath(rootElement, path = []) {
   let currentNode = rootElement;
 
   for (const index of path) {
-    if (!currentNode?.childNodes || index < 0 || index >= currentNode.childNodes.length) {
+    const renderableChildren = getRenderableChildNodes(currentNode);
+
+    if (index < 0 || index >= renderableChildren.length) {
       return null;
     }
 
-    currentNode = currentNode.childNodes[index];
+    currentNode = renderableChildren[index];
   }
 
   return currentNode ?? null;
