@@ -337,8 +337,8 @@ export function setDomProps(element, props = {}) {}
 - text node → `document.createTextNode`
 - element node → `document.createElement(tag)`
 - props 설정 후 children 재귀 렌더링
-- `renderVNode(vNode, container)`는 container 내용을 비우고 초기 렌더링할 때만 사용
-- patch 단계에서는 `renderVNode` 대신 patch 함수 사용
+- `renderVNode(vNode, container)`는 초기 렌더, Reset, 또는 patch 불가능한 컨테이너 복구에 사용한다.
+- patch 단계에서는 기본적으로 patch 함수를 사용하고, 컨테이너 상태가 현재 VDOM과 어긋났을 때만 `renderVNode` fallback을 허용한다.
 
 ### props 반영 규칙
 - 문자열 attribute는 `setAttribute`
@@ -544,17 +544,21 @@ export function initApp() {}
 
 ### Undo 버튼 동작
 1. history undo
-2. currentVNode 교체
-3. realRoot 전체 렌더
-4. testRoot 전체 렌더
-5. debug panel 업데이트
+2. target VDOM 조회
+3. `patches = diff(currentVNode, targetVNode)`
+4. realRoot에 patch 적용, patch 불가 시 target VDOM으로 fallback render
+5. testRoot에 patch 적용, 현재 DOM이 currentVNode와 다르면 target VDOM으로 fallback render
+6. `currentVNode = cloneVNode(targetVNode)`
+7. debug panel 업데이트
 
 ### Redo 버튼 동작
 1. history redo
-2. currentVNode 교체
-3. realRoot 전체 렌더
-4. testRoot 전체 렌더
-5. debug panel 업데이트
+2. target VDOM 조회
+3. `patches = diff(currentVNode, targetVNode)`
+4. realRoot에 patch 적용, patch 불가 시 target VDOM으로 fallback render
+5. testRoot에 patch 적용, 현재 DOM이 currentVNode와 다르면 target VDOM으로 fallback render
+6. `currentVNode = cloneVNode(targetVNode)`
+7. debug panel 업데이트
 
 ### Reset 버튼 동작
 1. 초기 VDOM으로 되돌림
