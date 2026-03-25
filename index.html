@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Virtual DOM Playground</title>
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>Mini Virtual DOM Playground</h1>
+      </header>
+
+      <section class="controls">
+        <button id="patch-btn" type="button">Patch</button>
+        <button id="undo-btn" type="button">Undo</button>
+        <button id="redo-btn" type="button">Redo</button>
+        <button id="reset-btn" type="button">Reset</button>
+      </section>
+
+      <main class="workspace">
+        <section class="panel">
+          <h2>실제 영역</h2>
+          <div id="real-root" class="render-root"></div>
+        </section>
+
+        <section class="panel">
+          <h2>테스트 영역</h2>
+          <div id="test-root" class="render-root" contenteditable="true"></div>
+        </section>
+      </main>
+
+      <section class="debug-section">
+        <div class="debug-panel">
+          <h2>Patch Log</h2>
+          <pre id="patch-log"></pre>
+        </div>
+
+        <div class="debug-panel">
+          <h2>Current VDOM</h2>
+          <pre id="vdom-log"></pre>
+        </div>
+
+        <div class="debug-panel">
+          <h2>History</h2>
+          <pre id="history-log"></pre>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
