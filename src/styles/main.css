@@ -76,9 +76,17 @@ body {
 }
 
 .controls button:disabled {
-  opacity: 0.45;
+  opacity: 0.48;
+  border-color: rgba(111, 79, 52, 0.18);
+  color: rgba(255, 250, 246, 0.78);
+  background: linear-gradient(135deg, #b8a189, #957f68);
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.controls button:focus-visible {
+  outline: 3px solid rgba(184, 92, 56, 0.22);
+  outline-offset: 3px;
 }
 
 .workspace {
@@ -110,10 +118,16 @@ body {
 .render-root {
   min-height: 320px;
   padding: 18px;
+  overflow: auto;
   border: 1px dashed var(--border);
   border-radius: 16px;
   background: var(--surface-strong);
   outline: none;
+}
+
+#test-root:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(184, 92, 56, 0.12);
 }
 
 .debug-section {
@@ -131,6 +145,8 @@ body {
   min-height: 180px;
   padding: 14px;
   overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
   border-radius: 14px;
   background: #2d2218;
   color: #f6ebdc;

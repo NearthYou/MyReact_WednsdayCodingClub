@@ -1,19 +1,48 @@
+import { cloneVNode } from "../core/vdom.js";
+
+function cloneSnapshot(vNode) {
+  return cloneVNode(vNode);
+}
+
 export function createHistory(initialVNode) {
-  throw new Error("createHistory is not implemented yet.");
+  return {
+    stack: [cloneSnapshot(initialVNode)],
+    index: 0,
+  };
 }
 
 export function pushHistory(historyState, vNode) {
-  throw new Error("pushHistory is not implemented yet.");
+  const nextStack = historyState.stack.slice(0, historyState.index + 1);
+
+  nextStack.push(cloneSnapshot(vNode));
+
+  return {
+    stack: nextStack,
+    index: nextStack.length - 1,
+  };
 }
 
 export function undoHistory(historyState) {
-  throw new Error("undoHistory is not implemented yet.");
+  const nextIndex = historyState.index > 0 ? historyState.index - 1 : historyState.index;
+
+  return {
+    stack: historyState.stack,
+    index: nextIndex,
+  };
 }
 
 export function redoHistory(historyState) {
-  throw new Error("redoHistory is not implemented yet.");
+  const lastIndex = historyState.stack.length - 1;
+  const nextIndex = historyState.index < lastIndex ? historyState.index + 1 : historyState.index;
+
+  return {
+    stack: historyState.stack,
+    index: nextIndex,
+  };
 }
 
 export function getCurrentHistoryVNode(historyState) {
-  throw new Error("getCurrentHistoryVNode is not implemented yet.");
+  const currentVNode = historyState.stack[historyState.index];
+
+  return currentVNode ? cloneSnapshot(currentVNode) : null;
 }

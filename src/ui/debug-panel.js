@@ -1,15 +1,31 @@
+function setPanelText(selector, value) {
+  const element = document.querySelector(selector);
+
+  if (!element) {
+    return;
+  }
+
+  element.textContent = JSON.stringify(value, null, 2);
+}
+
 export function updatePatchLog(patches = []) {
-  throw new Error("updatePatchLog is not implemented yet.");
+  setPanelText("#patch-log", patches);
 }
 
 export function updateVNodeLog(vNode) {
-  throw new Error("updateVNodeLog is not implemented yet.");
+  setPanelText("#vdom-log", vNode);
 }
 
 export function updateHistoryLog(historyState) {
-  throw new Error("updateHistoryLog is not implemented yet.");
+  setPanelText("#history-log", {
+    index: historyState?.index ?? 0,
+    length: historyState?.stack?.length ?? 0,
+    stack: historyState?.stack ?? [],
+  });
 }
 
 export function updateAllDebugPanels({ patches, vNode, historyState }) {
-  throw new Error("updateAllDebugPanels is not implemented yet.");
+  updatePatchLog(patches);
+  updateVNodeLog(vNode);
+  updateHistoryLog(historyState);
 }
