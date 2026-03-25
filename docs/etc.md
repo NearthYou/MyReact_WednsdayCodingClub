@@ -147,7 +147,8 @@ Vanilla JavaScript ESM 기준으로 작성해줘.
 - core 모듈 인터페이스를 수정하지 말고 호출만 해.
 - history 구조는 { stack, index } 를 그대로 사용해.
 - Patch 버튼은 test-root의 현재 구조를 기준으로 새 VDOM을 만들어야 해.
-- Undo/Redo/Reset은 전체 렌더 기준으로 일관되게 동작해야 해.
+- Undo/Redo는 history snapshot 간 diff/patch를 기본으로 사용하고, patch 불가능한 컨테이너만 fallback render 해야 해.
+- Reset은 전체 렌더로 유지해.
 - UI 계층에서 diff/patch 로직을 중복 구현하지 마.
 
 금지:

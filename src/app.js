@@ -12,6 +12,10 @@ import {
 } from "./state/history.js";
 import { bindControls, setButtonState } from "./ui/bindings.js";
 import { updateAllDebugPanels } from "./ui/debug-panel.js";
+import { formatHistoryTree, formatVNodeTree } from "./ui/tree-formatter.js";
+
+const TEXT_NODE = 3;
+const COMMENT_NODE = 8;
 
 function getAppElements() {
   const realRoot = document.querySelector("#real-root");
@@ -40,6 +44,63 @@ function readSingleRootVNode(container) {
   return children.length === 1 ? children[0] : null;
 }
 
+function isIgnorableNode(node) {
+  if (!node) {
+    return true;
+  }
+
+  if (node.nodeType === COMMENT_NODE) {
+    return true;
+  }
+
+  if (node.nodeType === TEXT_NODE) {
+    return String(node.nodeValue ?? "").trim() === "";
+  }
+
+  return false;
+}
+
+function getPatchTargetNode(container) {
+  const renderableChildren = Array.from(container?.childNodes ?? []).filter(
+    (childNode) => !isIgnorableNode(childNode),
+  );
+
+  return renderableChildren.length === 1 ? renderableChildren[0] : null;
+}
+
+function isSameVNode(leftVNode, rightVNode) {
+  if (!leftVNode || !rightVNode) {
+    return leftVNode === rightVNode;
+  }
+
+  return diff(leftVNode, rightVNode).length === 0;
+}
+
+function patchContainer(container, fromVNode, toVNode, patches) {
+  const currentDomVNode = readSingleRootVNode(container);
+
+  if (patches.length === 0) {
+    if (!isSameVNode(currentDomVNode, toVNode)) {
+      renderVNode(toVNode, container);
+    }
+
+    return;
+  }
+
+  const patchTarget = getPatchTargetNode(container);
+
+  if (!patchTarget || !isSameVNode(currentDomVNode, fromVNode)) {
+    renderVNode(toVNode, container);
+    return;
+  }
+
+  applyPatches(patchTarget, patches);
+
+  if (!isSameVNode(readSingleRootVNode(container), toVNode)) {
+    renderVNode(toVNode, container);
+  }
+}
+
 function getButtonFlags(historyState) {
   return {
     canUndo: historyState.index > 0,
@@ -66,19 +127,14 @@ function setBootstrapError(message) {
   }
 
   if (vdomLog) {
-    vdomLog.textContent = "null";
+    vdomLog.textContent = formatVNodeTree(null);
   }
 
   if (historyLog) {
-    historyLog.textContent = JSON.stringify(
-      {
-        index: 0,
-        length: 0,
-        stack: [],
-      },
-      null,
-      2,
-    );
+    historyLog.textContent = formatHistoryTree({
+      index: 0,
+      stack: [],
+    });
   }
 
   if (patchButton) {
@@ -102,6 +158,18 @@ function syncRenderRoots(realRoot, testRoot, currentVNode, historyState, patches
   renderVNode(currentVNode, realRoot);
   renderVNode(currentVNode, testRoot);
   refreshUi({ patches, vNode: currentVNode, historyState });
+}
+
+function transitionRootsWithPatches(realRoot, testRoot, fromVNode, toVNode) {
+  const patches = diff(fromVNode, toVNode);
+
+  patchContainer(realRoot, fromVNode, toVNode, patches);
+  patchContainer(testRoot, fromVNode, toVNode, patches);
+
+  return {
+    currentVNode: cloneVNode(toVNode),
+    patches,
+  };
 }
 
 export function initApp() {
@@ -134,7 +202,7 @@ export function initApp() {
       onPatch: () => {
         const newVNode = readSingleRootVNode(testRoot);
 
-        if (!newVNode || !realRoot.firstChild) {
+        if (!newVNode) {
           syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
           return;
         }
@@ -147,7 +215,7 @@ export function initApp() {
           return;
         }
 
-        applyPatches(realRoot.firstChild, patches);
+        patchContainer(realRoot, currentVNode, newVNode, patches);
 
         currentVNode = cloneVNode(newVNode);
         historyState = pushHistory(historyState, currentVNode);
@@ -157,15 +225,41 @@ export function initApp() {
       },
       onUndo: () => {
         historyState = undoHistory(historyState);
-        currentVNode = getCurrentHistoryVNode(historyState);
+        const targetVNode = getCurrentHistoryVNode(historyState);
 
-        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+        if (!targetVNode) {
+          syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+          return;
+        }
+
+        const transition = transitionRootsWithPatches(
+          realRoot,
+          testRoot,
+          currentVNode,
+          targetVNode,
+        );
+
+        currentVNode = transition.currentVNode;
+        refreshUi({ patches: transition.patches, vNode: currentVNode, historyState });
       },
       onRedo: () => {
         historyState = redoHistory(historyState);
-        currentVNode = getCurrentHistoryVNode(historyState);
+        const targetVNode = getCurrentHistoryVNode(historyState);
 
-        syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+        if (!targetVNode) {
+          syncRenderRoots(realRoot, testRoot, currentVNode, historyState);
+          return;
+        }
+
+        const transition = transitionRootsWithPatches(
+          realRoot,
+          testRoot,
+          currentVNode,
+          targetVNode,
+        );
+
+        currentVNode = transition.currentVNode;
+        refreshUi({ patches: transition.patches, vNode: currentVNode, historyState });
       },
       onReset: () => {
         currentVNode = cloneVNode(initialSnapshot);

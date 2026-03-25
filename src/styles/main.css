@@ -145,8 +145,8 @@ body {
   min-height: 180px;
   padding: 14px;
   overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  word-break: normal;
   border-radius: 14px;
   background: #2d2218;
   color: #f6ebdc;

@@ -7,7 +7,7 @@
 - 구현 기준 문서는 `docs/TEAM_SPEC.md`입니다.
 - 브라우저에서 바로 실행하는 ESM 구조를 유지합니다.
 - UI 계층은 실제 렌더 트리의 루트 노드 1개를 기준으로 patch를 적용합니다.
-- 테스트 영역은 `contenteditable`로 편집하고, 실제 영역은 patch 또는 전체 렌더로 반영합니다.
+- 테스트 영역은 `contenteditable`로 편집하고, Patch / Undo / Redo는 patch 기반으로 반영합니다. Reset과 비정상 DOM 복구 시에는 전체 렌더를 사용합니다.
 
 ## 2. 핵심 기능
 
@@ -72,7 +72,9 @@ TextVNode
 - `#real-root`, `#test-root`는 patch 대상 자체가 아니라 렌더 컨테이너입니다.
 - `currentVNode`는 컨테이너 내부의 실제 루트 노드 1개를 표현합니다.
 - Patch 버튼은 `#test-root`의 child 구조를 읽어 새 VDOM을 만들고, 실제 적용은 `applyPatches(realRoot.firstChild, patches)`처럼 실제 루트 노드에 수행합니다.
-- Undo, Redo, Reset은 두 컨테이너에 대해 `renderVNode`로 전체 렌더를 다시 수행합니다.
+- Undo와 Redo는 현재 history snapshot과 목표 snapshot 사이의 `diff`를 계산하고, 두 컨테이너 모두에 patch를 적용합니다.
+- `#test-root`처럼 현재 DOM이 `currentVNode`와 어긋난 컨테이너는 patch 대신 `renderVNode`로 해당 컨테이너만 복구합니다.
+- Reset은 두 컨테이너를 `renderVNode`로 전체 렌더합니다.
 
 ## 7. History / Undo / Redo
 
@@ -80,6 +82,7 @@ TextVNode
 - `stack[0]`은 항상 초기 snapshot입니다.
 - 새 patch를 push하면 현재 index 뒤 redo 이력은 제거됩니다.
 - Undo는 `index > 0`, Redo는 `index < stack.length - 1`일 때만 이동합니다.
+- Patch Log는 Patch 버튼뿐 아니라 Undo / Redo에서 계산한 patch 배열도 표시합니다.
 - 디버그 패널은 현재 index와 stack length를 함께 표시합니다.
 
 ## 8. 테스트 및 CI
